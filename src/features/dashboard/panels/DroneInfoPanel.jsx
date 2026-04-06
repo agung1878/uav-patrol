@@ -1,39 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { uavService } from '../../../services/api';
+import { hide } from '@tauri-apps/api/app';
+import React, { useState } from 'react';
 
-export default function DroneInfoPanel() {
-    const [drones, setDrones] = useState([]);
-    const [selectedDrone, setSelectedDrone] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [errorMsg, setErrorMsg] = useState('');
+export default function DroneInfoPanel({
+    drones = [],
+    selectedDrone = null,
+    onSelectDrone,
+    isLoading = true,
+    errorMsg = '',
+    telemetry = null,
+    isTelemetryConnected = false
+}) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    useEffect(() => {
-        const fetchDroneInfo = async () => {
-            try {
-                const data = await uavService.getMyUavsDropdown();
-                if (data && data.length > 0) {
-                    setDrones(data);
-                    setSelectedDrone(data[0]);
-                } else {
-                    setErrorMsg('No UAVs Available');
-                }
-            } catch (error) {
-                console.error("Error fetching drone info:", error);
-                if (error.message === 'No authentication token found') {
-                    setErrorMsg('Not Authenticated');
-                } else {
-                    setErrorMsg('Error Loading Data');
-                }
-            } finally {
-                setIsLoading(false);
-            }
-        };
 
-        fetchDroneInfo();
-    }, []);
+    // Extract telemetry from metric-keyed structure
+    const location = telemetry?.location || {};
+    const batteryData = telemetry?.battery || {};
+    const gps = telemetry?.gps || {};
+    const vehicleState = telemetry?.vehicle_state || {};
+    const attitude = telemetry?.attitude || {};
+    const link = telemetry?.link || {};
+    const missionProgress = telemetry?.mission_progress || {};
+
+    const battery = batteryData.percent ?? null;
+    const altitude = location.altitude ?? null;
+    const speed = location.ground_speed ?? null;
+    const heading = location.heading ?? null;
+    const climbRate = location.climb_rate ?? null;
+    const latitude = location.latitude ?? null;
+    const longitude = location.longitude ?? null;
+    const satellites = gps.satellites ?? null;
+    const fixLabel = gps.fix_type_label ?? null;
+    const flightMode = vehicleState.mode ?? null;
+    const isArmed = vehicleState.armed ?? null;
+    const landedState = vehicleState.landed_state ?? null;
+    const rssi = link.rssi ?? null;
+    const voltage = batteryData.voltage ?? null;
+
+    // Determine battery status
+    const getBatteryStatus = (level) => {
+        if (level === null || level === undefined) return { text: '--', color: 'text-gray-500', label: 'No Data', width: '0%', barColor: '#4b5563' };
+        if (level >= 60) return { text: `${level}%`, color: 'text-[#1ab394]', label: 'Safe to Fly', width: `${level}%`, barColor: '#1ab394' };
+        if (level >= 30) return { text: `${level}%`, color: 'text-[#f0ad4e]', label: 'Moderate', width: `${level}%`, barColor: '#f0ad4e' };
+        return { text: `${level}%`, color: 'text-[#ea580c]', label: 'Low Battery', width: `${level}%`, barColor: '#ea580c' };
+    };
+
+    const batteryStatus = getBatteryStatus(battery);
 
     return (
-        <div className="w-full h-full bg-[#1c222c] rounded-2xl border border-[#2a3240] p-5 shadow-lg flex flex-col gap-6 select-none">
+        <div className="w-full h-full bg-[#1c222c] rounded-2xl border border-[#2a3240] p-5 shadow-lg flex flex-col gap-4 select-none">
 
             {/* Header Section */}
             <div className="flex justify-between items-start">
@@ -64,7 +78,7 @@ export default function DroneInfoPanel() {
                                     key={drone.id}
                                     className={`px-3 py-2 text-[14px] cursor-pointer hover:bg-[#1a212b] transition-colors ${selectedDrone?.id === drone.id ? 'text-[#ea580c] font-bold bg-[#1a212b]' : 'text-gray-200'}`}
                                     onClick={() => {
-                                        setSelectedDrone(drone);
+                                        onSelectDrone(drone);
                                         setIsDropdownOpen(false);
                                     }}
                                 >
@@ -76,9 +90,18 @@ export default function DroneInfoPanel() {
                     )}
 
                     {!isLoading && !errorMsg && (
-                        <a href="#" className="text-[#ea580c] text-[10px] font-semibold tracking-wider hover:underline mt-[2px] w-fit">
-                            {selectedDrone?.camera_spec ? `Spec: ${selectedDrone.camera_spec}` : 'View Detail'}
-                        </a>
+                        <div className="flex items-center gap-2 mt-[2px]">
+                            <a href="#" className="text-[#ea580c] text-[10px] font-semibold tracking-wider hover:underline w-fit">
+                                {selectedDrone?.camera_spec ? `Spec: ${selectedDrone.camera_spec}` : 'View Detail'}
+                            </a>
+                            {/* Telemetry connection indicator */}
+                            <div className="flex items-center gap-1">
+                                <div className={`w-1.5 h-1.5 rounded-full ${isTelemetryConnected ? 'bg-[#1ab394] animate-pulse' : 'bg-gray-600'}`}></div>
+                                <span className={`text-[9px] font-mono ${isTelemetryConnected ? 'text-[#1ab394]' : 'text-gray-600'}`}>
+                                    {isTelemetryConnected ? 'LIVE' : 'OFFLINE'}
+                                </span>
+                            </div>
+                        </div>
                     )}
                 </div>
                 <img src="/src/assets/icon_drone.png" alt="Drone" className="h-10 w-auto object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] invert brightness-75 sepia-[0.5] hue-rotate-180 saturate-50" />
@@ -90,22 +113,29 @@ export default function DroneInfoPanel() {
                 <div className="flex justify-between items-center bg-[#171c24] border border-[#2a3240] rounded-xl p-3">
                     <div className="flex items-center gap-3">
                         <div className="w-9 h-4 border-[1.5px] border-gray-400 rounded-[2px] p-[1.5px] relative">
-                            <div className="h-full bg-[#ea580c] w-[82%] rounded-[1px]"></div>
+                            <div
+                                className="h-full rounded-[1px] transition-all duration-500"
+                                style={{ width: batteryStatus.width, backgroundColor: batteryStatus.barColor }}
+                            ></div>
                             <div className="absolute right-[-4px] top-1/2 -translate-y-1/2 w-[2px] h-2 bg-gray-400 rounded-r-[1px]"></div>
                         </div>
-                        <span className="text-white text-sm font-bold tracking-wider font-mono">82%</span>
+                        <span className="text-white text-sm font-bold tracking-wider font-mono">{batteryStatus.text}</span>
                     </div>
                     <div className="flex flex-col items-end">
-                        <span className="text-[#1ab394] text-[11px] font-bold tracking-wide">Good</span>
-                        <span className="text-[#1ab394] text-[9px] font-medium tracking-wide">Safe to Fly</span>
+                        <span className={`text-[11px] font-bold tracking-wide ${batteryStatus.color}`}>
+                            {battery !== null ? (battery >= 60 ? 'Good' : battery >= 30 ? 'Moderate' : 'Low') : '--'}
+                        </span>
+                        <span className={`text-[9px] font-medium tracking-wide ${batteryStatus.color}`}>
+                            {voltage !== null ? `${voltage.toFixed(1)}V` : batteryStatus.label}
+                        </span>
                     </div>
                 </div>
             </div>
 
             {/* Weather Section */}
-            <div className="flex flex-col gap-2 flex-1 text-left">
-                <h3 className="text-gray-200 text-xs font-semibold tracking-wide">Wheater</h3>
-                <div className="flex flex-col flex-1 justify-between bg-[#171c24] border border-[#2a3240] rounded-xl p-4">
+            <div className="flex flex-col gap-2 text-left">
+                <h3 className="text-gray-200 text-xs font-semibold tracking-wide">Weather</h3>
+                <div className="flex flex-col bg-[#171c24] border border-[#2a3240] rounded-xl p-4">
 
                     {/* Weather Header */}
                     <div className="flex justify-between items-start">
@@ -123,23 +153,91 @@ export default function DroneInfoPanel() {
                     </div>
 
                     {/* Weather Stats Table */}
-                    <div className="flex flex-col text-[10px] text-gray-400 mt-5">
+                    <div className="flex flex-col text-[10px] text-gray-400 mt-4">
                         <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
                         <div className="flex justify-between px-1">
                             <div className="flex w-1/2 justify-between pr-4"><span>Gust</span><span className="text-gray-200 font-mono">6 m/s</span></div>
-                            <div className="flex w-1/2 justify-between pl-4"><span>Gust</span><span className="text-gray-200 font-mono">6 m/s</span></div>
+                            <div className="flex w-1/2 justify-between pl-4"><span>Wind</span><span className="text-gray-200 font-mono">4 m/s</span></div>
                         </div>
                         <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
                         <div className="flex justify-between px-1">
-                            <div className="flex w-1/2 justify-between pr-4"><span>Humid</span><span className="text-gray-200 font-mono">6 m/s</span></div>
-                            <div className="flex w-1/2 justify-between pl-4"><span>Humid</span><span className="text-gray-200 font-mono">6 m/s</span></div>
+                            <div className="flex w-1/2 justify-between pr-4"><span>Humid</span><span className="text-gray-200 font-mono">72%</span></div>
+                            <div className="flex w-1/2 justify-between pl-4"><span>Visibility</span><span className="text-gray-200 font-mono">10 km</span></div>
                         </div>
                         <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
                     </div>
 
                     {/* Weather Footer */}
-                    <div className="flex justify-center mt-3">
+                    <div className="flex justify-center mt-2">
                         <span className="text-[#1ab394] text-[10px] font-medium tracking-wide">Good Condition for flight</span>
+                    </div>
+
+                </div>
+            </div>
+
+            {/* Telemetry Stats Section */}
+            <div className="flex flex-col gap-2 flex-1 text-left" style={{ display: 'none' }}>
+                <h3 className="text-gray-200 text-xs font-semibold tracking-wide">Telemetry</h3>
+                <div className="flex flex-col flex-1 justify-between bg-[#171c24] border border-[#2a3240] rounded-xl p-4">
+
+                    {/* Flight Info Grid */}
+                    <div className="flex flex-col text-[10px] text-gray-400">
+                        <div className="flex justify-between px-1">
+                            <div className="flex w-1/2 justify-between pr-4">
+                                <span>Altitude</span>
+                                <span className="text-gray-200 font-mono">{altitude !== null ? `${Number(altitude).toFixed(1)} m` : '-- m'}</span>
+                            </div>
+                            <div className="flex w-1/2 justify-between pl-4">
+                                <span>Speed</span>
+                                <span className="text-gray-200 font-mono">{speed !== null ? `${Number(speed).toFixed(1)} m/s` : '-- m/s'}</span>
+                            </div>
+                        </div>
+                        <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
+                        <div className="flex justify-between px-1">
+                            <div className="flex w-1/2 justify-between pr-4">
+                                <span>Heading</span>
+                                <span className="text-gray-200 font-mono">{heading !== null ? `${Number(heading).toFixed(0)}°` : '--°'}</span>
+                            </div>
+                            <div className="flex w-1/2 justify-between pl-4">
+                                <span>Climb</span>
+                                <span className="text-gray-200 font-mono">{climbRate !== null ? `${Number(climbRate).toFixed(1)} m/s` : '-- m/s'}</span>
+                            </div>
+                        </div>
+                        <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
+                        <div className="flex justify-between px-1">
+                            <div className="flex w-1/2 justify-between pr-4">
+                                <span>Sat</span>
+                                <span className="text-gray-200 font-mono">{satellites !== null ? `${satellites} (${fixLabel || '?'})` : '--'}</span>
+                            </div>
+                            <div className="flex w-1/2 justify-between pl-4">
+                                <span>RSSI</span>
+                                <span className="text-gray-200 font-mono">{rssi !== null ? rssi : '--'}</span>
+                            </div>
+                        </div>
+                        <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
+                        <div className="flex justify-between px-1">
+                            <div className="flex w-1/2 justify-between pr-4">
+                                <span>Lat</span>
+                                <span className="text-gray-200 font-mono">{latitude !== null ? Number(latitude).toFixed(6) : '--'}</span>
+                            </div>
+                            <div className="flex w-1/2 justify-between pl-4">
+                                <span>Lng</span>
+                                <span className="text-gray-200 font-mono">{longitude !== null ? Number(longitude).toFixed(6) : '--'}</span>
+                            </div>
+                        </div>
+                        <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
+                    </div>
+
+                    {/* Flight Mode Footer */}
+                    <div className="flex justify-between items-center mt-2 px-1">
+                        <span className={`text-[10px] font-medium tracking-wide ${isTelemetryConnected ? 'text-[#1ab394]' : 'text-gray-600'}`}>
+                            {flightMode
+                                ? `${flightMode}${isArmed ? ' • Armed' : ' • Disarmed'}`
+                                : (isTelemetryConnected ? 'Awaiting data...' : 'Disconnected')}
+                        </span>
+                        {landedState && (
+                            <span className="text-[9px] font-mono text-gray-500">{landedState}</span>
+                        )}
                     </div>
 
                 </div>

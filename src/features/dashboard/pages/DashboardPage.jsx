@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import MainVideoFeedPanel from '../panels/MainVideoFeedPanel';
 import MapViewPanel from '../panels/MapViewPanel';
 import MissionListPanel from '../panels/MissionListPanel';
@@ -6,11 +6,51 @@ import DroneInfoPanel from '../panels/DroneInfoPanel';
 import StreamButtonPanel from '../panels/StreamButtonPanel';
 import QuickLaunchDialog from '../components/QuickLaunchDialog';
 import QuickLaunchDialogForm from '../components/QuickLaunchDialogForm';
+import { uavService } from '../../../services/api';
+import useTelemetry from '../../../shared/hooks/useTelemetry';
 
 export default function DashboardPage() {
     const [isLaunchDialogOpen, setIsLaunchDialogOpen] = useState(false);
     const [isLaunchFormOpen, setIsLaunchFormOpen] = useState(false);
     const [selectedLaunchType, setSelectedLaunchType] = useState('ROI');
+
+    // Drone state (lifted up from DroneInfoPanel)
+    const [drones, setDrones] = useState([]);
+    const [selectedDrone, setSelectedDrone] = useState(null);
+    const [isDronesLoading, setIsDronesLoading] = useState(true);
+    const [dronesError, setDronesError] = useState('');
+
+    // Fetch drones
+    useEffect(() => {
+        const fetchDrones = async () => {
+            try {
+                const data = await uavService.getMyUavsDropdown();
+                if (data && data.length > 0) {
+                    setDrones(data);
+                    setSelectedDrone(data[0]);
+                } else {
+                    setDronesError('No UAVs Available');
+                }
+            } catch (error) {
+                console.error("Error fetching drone info:", error);
+                if (error.message === 'No authentication token found') {
+                    setDronesError('Not Authenticated');
+                } else {
+                    setDronesError('Error Loading Data');
+                }
+            } finally {
+                setIsDronesLoading(false);
+            }
+        };
+        fetchDrones();
+    }, []);
+
+    // Telemetry — subscribe to all drone IDs from the fetched list
+    const uavIds = drones.map(d => d.id);
+    const { telemetry, isConnected: isTelemetryConnected, error: telemetryError } = useTelemetry(uavIds);
+
+    // Get telemetry for the selected drone
+    const selectedTelemetry = selectedDrone ? telemetry[selectedDrone.id] : null;
 
     return (
         <div
@@ -26,7 +66,7 @@ export default function DashboardPage() {
                 {/* Bottom Container View */}
                 <div className="h-[240px] flex flex-row p-[14px] gap-[16px] shrink-0 bg-[#27313D] border border-[#2a3240] rounded-[24px] shadow-lg overflow-hidden">
                     <div className={`w-[413px] h-full shrink-0 ${(isLaunchDialogOpen || isLaunchFormOpen) ? 'invisible' : ''}`}>
-                        <MapViewPanel />
+                        <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} />
                     </div>
                     <div className="flex-1 h-full min-w-0">
                         <MissionListPanel />
@@ -38,7 +78,15 @@ export default function DashboardPage() {
             <div className="w-[440px] shrink-0 flex flex-col gap-[28px]">
                 {/* Drone Info */}
                 <div className="flex-1 min-h-0">
-                    <DroneInfoPanel />
+                    <DroneInfoPanel
+                        drones={drones}
+                        selectedDrone={selectedDrone}
+                        onSelectDrone={setSelectedDrone}
+                        isLoading={isDronesLoading}
+                        errorMsg={dronesError}
+                        telemetry={selectedTelemetry}
+                        isTelemetryConnected={isTelemetryConnected}
+                    />
                 </div>
                 {/* Button Stream */}
                 <div className="h-[360px] shrink-0">
@@ -69,3 +117,4 @@ export default function DashboardPage() {
         </div>
     );
 }
+

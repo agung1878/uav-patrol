@@ -1,4 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://api-xflight.kumalabs.tech';
+export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://api-xflight.kumalabs.tech';
 
 export const authService = {
     login: async (username, password) => {
@@ -15,6 +16,25 @@ export const authService = {
             throw new Error(data.error || 'Login failed');
         }
         return data;
+    },
+
+    getWsToken: async () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_BASE_URL}/auth/ws-token`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to get WebSocket token');
+        }
+
+        return response.json();
     }
 };
 
