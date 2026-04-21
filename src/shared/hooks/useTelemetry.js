@@ -33,10 +33,18 @@ const MAX_RECONNECT_ATTEMPTS = 10;
  * @param {number[]} uavIds - Array of UAV IDs to subscribe to.
  * @returns {{ telemetry: object, isConnected: boolean, error: string|null }}
  */
+const MAX_TRAJECTORY_POINTS = 500;
+
 export default function useTelemetry(uavIds = []) {
     const [telemetry, setTelemetry] = useState({});
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState(null);
+
+    // Track position history (trajectory) and home position per UAV
+    const positionHistoryRef = useRef({}); // { [uav_id]: [[lat, lng], ...] }
+    const homePositionRef = useRef({});    // { [uav_id]: [lat, lng] }
+    const [positionHistory, setPositionHistory] = useState({});
+    const [homePositions, setHomePositions] = useState({});
 
     const wsRef = useRef(null);
     const reconnectAttempts = useRef(0);
@@ -125,7 +133,33 @@ export default function useTelemetry(uavIds = []) {
                     }
 
                     const { uav_id, metric, payload } = msg;
-                    console.log(`[Telemetry] Updating uav_id=${uav_id} metric=${metric}`, payload);
+
+                    // Track trajectory and home position from location updates
+                    if (metric === 'location' && payload.latitude != null && payload.longitude != null) {
+                        const pos = [payload.latitude, payload.longitude];
+
+                        // Set home position (first known location)
+                        if (!homePositionRef.current[uav_id]) {
+                            homePositionRef.current[uav_id] = pos;
+                            setHomePositions(prev => ({ ...prev, [uav_id]: pos }));
+                        }
+
+                        // Append to trajectory history
+                        if (!positionHistoryRef.current[uav_id]) {
+                            positionHistoryRef.current[uav_id] = [];
+                        }
+                        const history = positionHistoryRef.current[uav_id];
+                        // Only add if moved (avoid duplicate points)
+                        const last = history[history.length - 1];
+                        if (!last || last[0] !== pos[0] || last[1] !== pos[1]) {
+                            history.push(pos);
+                            // Cap the history size
+                            if (history.length > MAX_TRAJECTORY_POINTS) {
+                                history.shift();
+                            }
+                            setPositionHistory(prev => ({ ...prev, [uav_id]: [...history] }));
+                        }
+                    }
 
                     setTelemetry(prev => ({
                         ...prev,
@@ -198,5 +232,5 @@ export default function useTelemetry(uavIds = []) {
         };
     }, [connect, JSON.stringify(uavIds)]);
 
-    return { telemetry, isConnected, error };
+    return { telemetry, isConnected, error, positionHistory, homePositions };
 }

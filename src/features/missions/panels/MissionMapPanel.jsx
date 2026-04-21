@@ -19,10 +19,11 @@ const dockIcon = new L.DivIcon({
     iconAnchor: [12, 12]
 });
 
-const droneIcon = new L.DivIcon({
+// Drone icon with heading rotation from location telemetry
+const createDroneIcon = (heading) => new L.DivIcon({
     className: 'custom-drone-icon',
     html: `
-        <img src="/src/assets/icon_drone.png" alt="Drone" class="w-24 h-24" />
+        <img src="/src/assets/icon_drone.svg" alt="Drone" class="w-24 h-24" />
     `,
     iconSize: [96, 96],
     iconAnchor: [48, 48]
@@ -45,27 +46,42 @@ function MapClickHandler({ onAddWaypoint }) {
     return null;
 }
 
-export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode = true }) {
-    const center = [-6.200000, 106.816666]; // Jakarta coordinates for dummy data
-    const dockPosition = [-6.195, 106.81];
-    const dronePosition = [-6.198, 106.805];
+export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode = true, telemetry, trajectory, homePosition }) {
+    const defaultCenter = [-6.200000, 106.816666]; // Jakarta fallback
 
-    // Extract lat/lng pairs for the polyline connection
+    // Get drone position from telemetry
+    const location = telemetry?.location || {};
+    const hasLocation = location.latitude != null && location.longitude != null;
+    const dronePosition = hasLocation ? [location.latitude, location.longitude] : null;
+    const heading = location.heading ?? 0;
+
+    // Home/dock position from telemetry (first known location)
+    const dockPosition = homePosition || null;
+
+    // Map center priority: drone > home > default
+    const mapCenter = dronePosition || dockPosition || defaultCenter;
+
+    // Extract lat/lng pairs for the waypoint polyline
     const linePositions = waypoints.map(wp => [wp.lat, wp.lng]);
 
-    // Connect drone to the first waypoint
-    const allLines = waypoints.length > 0 ? [dronePosition, ...linePositions] : [];
+    // Connect drone to the first waypoint (only if drone position is known)
+    const allLines = waypoints.length > 0 && dronePosition
+        ? [dronePosition, ...linePositions]
+        : (waypoints.length > 0 ? linePositions : []);
+
+    // Max range circle center (use home if available)
+    const circleCenter = dockPosition || dronePosition;
 
     return (
         <div className="relative w-full h-full bg-[#181d25]">
             <MapContainer
-                center={center}
-                zoom={14}
+                center={mapCenter}
+                zoom={dronePosition ? 16 : 14}
                 style={{ height: '100%', width: '100%' }}
                 zoomControl={false}
                 scrollWheelZoom={true}
             >
-                {/* Dark CartoDB Matter tile layer */}
+                {/* Dark CartoDB tile layer */}
                 <TileLayer
                     url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -74,16 +90,34 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                 <MapClickHandler onAddWaypoint={onAddWaypoint} />
 
                 {/* Max Radius Circle */}
-                <Circle center={dockPosition} radius={1800} pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1, dashArray: '4, 8' }} />
+                {circleCenter && (
+                    <Circle center={circleCenter} radius={1800} pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1, dashArray: '4, 8' }} />
+                )}
 
-                {/* Draw lines between points */}
-                <Polyline positions={allLines} color="#ea580c" weight={2} dashArray="4, 6" />
+                {/* Trajectory trail — cyan line showing where drone has flown */}
+                {trajectory && trajectory.length > 1 && (
+                    <Polyline
+                        positions={trajectory}
+                        color="#06b6d4"
+                        weight={3}
+                        opacity={0.7}
+                    />
+                )}
 
-                {/* Dock Marker */}
-                <Marker position={dockPosition} icon={dockIcon} />
+                {/* Waypoint route lines */}
+                {allLines.length > 1 && (
+                    <Polyline positions={allLines} color="#ea580c" weight={2} dashArray="4, 6" />
+                )}
 
-                {/* Drone Marker */}
-                <Marker position={dronePosition} icon={droneIcon} />
+                {/* Home/Dock Marker — from telemetry first position */}
+                {dockPosition && (
+                    <Marker position={dockPosition} icon={dockIcon} />
+                )}
+
+                {/* Drone Marker — live from telemetry */}
+                {dronePosition && (
+                    <Marker position={dronePosition} icon={createDroneIcon(heading)} />
+                )}
 
                 {/* Waypoints */}
                 {waypoints.map((wp, index) => (

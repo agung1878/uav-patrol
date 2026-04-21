@@ -9,13 +9,29 @@ const ChevronDownIcon = () => (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
 );
 
-export default function MissionDetailPanel({ waypointsCount = 0, onClearWaypoints }) {
-    const [timeMode, setTimeMode] = useState('Recurrent'); // default to Recurrent for testing
-    const [recurrentType, setRecurrentType] = useState('Monthly'); // 'Monthly', 'Weekly', 'Daily'
-    const [selectedMonths, setSelectedMonths] = useState([0, 1, 2]); // default Jan, Feb, Mar
+export default function MissionDetailPanel({
+    waypointsCount = 0,
+    onClearWaypoints,
+    drones = [],
+    selectedUavId,
+    onSelectUav,
+    onSubmit,
+    isSubmitting = false,
+    submitError = '',
+    submitSuccess = ''
+}) {
+    const [missionName, setMissionName] = useState('');
+    const [timeMode, setTimeMode] = useState('Later');
+    const [scheduleDate, setScheduleDate] = useState('');
+    const [scheduleTime, setScheduleTime] = useState('');
+
+    // Recurrent fields
+    const [recurrentType, setRecurrentType] = useState('Monthly');
+    const [selectedMonths, setSelectedMonths] = useState([]);
     const [selectedWeeks, setSelectedWeeks] = useState([]);
     const [selectedDays, setSelectedDays] = useState([]);
-    const [isIntervalEnabled, setIsIntervalEnabled] = useState(true);
+    const [isIntervalEnabled, setIsIntervalEnabled] = useState(false);
+    const [recurrenceInterval, setRecurrenceInterval] = useState('2');
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'];
@@ -25,13 +41,50 @@ export default function MissionDetailPanel({ waypointsCount = 0, onClearWaypoint
         setter(prev => prev.includes(itemIndex) ? prev.filter(i => i !== itemIndex) : [...prev, itemIndex]);
     };
 
+    const handleSubmit = () => {
+        let schedule = null;
+        let isRecurring = false;
+        let recurrenceUnit = null;
+        let recInterval = null;
+
+        // Format as local datetime string: "2026-04-07 13:10:00"
+        const formatSchedule = (date, time) => {
+            if (date && time) return `${date} ${time}:00`;
+            if (date) return `${date} 00:00:00`;
+            // Fallback: current local time
+            const now = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        };
+
+        if (timeMode === 'Now') {
+            schedule = formatSchedule(null, null);
+        } else if (timeMode === 'Later') {
+            schedule = formatSchedule(scheduleDate, scheduleTime);
+        } else if (timeMode === 'Recurrent') {
+            isRecurring = true;
+            recurrenceUnit = recurrentType.toLowerCase();
+            recInterval = isIntervalEnabled ? parseInt(recurrenceInterval) || 1 : 1;
+            schedule = formatSchedule(scheduleDate, scheduleTime);
+        }
+
+        onSubmit?.({
+            missionName,
+            timeMode,
+            schedule,
+            isRecurring,
+            recurrenceUnit,
+            recurrenceInterval: recInterval
+        });
+    };
+
     return (
         <div className="w-auto h-full p-5 flex flex-col select-none bg-[#242c38] rounded-tl-lg border border-[#3b4452] shadow-2xl overflow-y-auto no-scrollbar">
             {/* Header */}
-            <div className="flex justify-between items-start mb-8 border-[#3b4452]">
+            <div className="flex justify-between items-start mb-6 border-[#3b4452]">
                 <div>
                     <h2 className="text-white text-[24px] font-bold tracking-wide">Create Mission</h2>
-                    <p className="text-gray-400 text-[13px] mt-[2px]">{waypointsCount} Pinpoint - 150 meter</p>
+                    <p className="text-gray-400 text-[13px] mt-[2px]">{waypointsCount} Waypoint{waypointsCount !== 1 ? 's' : ''}</p>
                 </div>
                 <button
                     onClick={onClearWaypoints}
@@ -43,7 +96,29 @@ export default function MissionDetailPanel({ waypointsCount = 0, onClearWaypoint
             </div>
 
             {/* Form Fields */}
-            <div className="flex flex-col gap-6 w-full pr-8">
+            <div className="flex flex-col gap-5 w-full pr-8">
+
+                {/* UAV Selection */}
+                <div className="flex flex-col">
+                    <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Select UAV</label>
+                    <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 relative focus-within:border-gray-400 transition-colors">
+                        <select
+                            value={selectedUavId || ''}
+                            onChange={(e) => onSelectUav(parseInt(e.target.value))}
+                            className="bg-transparent text-gray-100 text-[13px] outline-none w-full appearance-none cursor-pointer"
+                        >
+                            {drones.length === 0 && <option value="" className="bg-[#2d3745]">Loading UAVs...</option>}
+                            {drones.map(drone => (
+                                <option key={drone.id} value={drone.id} className="bg-[#2d3745]">
+                                    {drone.name} {drone.camera_spec ? `(${drone.camera_spec})` : ''}
+                                </option>
+                            ))}
+                        </select>
+                        <div className="pointer-events-none absolute right-4 text-gray-400">
+                            <ChevronDownIcon />
+                        </div>
+                    </div>
+                </div>
 
                 {/* Mission Name */}
                 <div className="flex flex-col">
@@ -52,7 +127,9 @@ export default function MissionDetailPanel({ waypointsCount = 0, onClearWaypoint
                         <input
                             type="text"
                             className="bg-transparent text-gray-100 text-[13px] outline-none w-full"
-                            defaultValue="Mission1"
+                            placeholder="Enter mission name"
+                            value={missionName}
+                            onChange={(e) => setMissionName(e.target.value)}
                         />
                     </div>
                 </div>
@@ -76,43 +153,34 @@ export default function MissionDetailPanel({ waypointsCount = 0, onClearWaypoint
                     </div>
                 </div>
 
-                {timeMode === 'Now' && (
-                    <div className="flex items-center mt-2 group cursor-pointer w-fit pl-1">
-                        <div className="w-4 h-4 rounded border border-gray-400 group-hover:border-gray-300 mr-2 flex items-center justify-center transition-colors">
-                        </div>
-                        <span className="text-gray-300 text-[13px] font-medium group-hover:text-white transition-colors">Interval</span>
-                    </div>
-                )}
-
                 {/* Later Mode Fields */}
                 {timeMode === 'Later' && (
-                    <>
-                        <div className="grid grid-cols-2 gap-8">
-                            {/* Date Field Container */}
-                            <div className="flex flex-col relative w-full">
-                                <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Date</label>
-                                <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full">
-                                    <input
-                                        type="date"
-                                        className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
-                                        style={{ colorScheme: 'dark' }} // Attempt to theme native picker icon
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Start Time Field Container */}
-                            <div className="flex flex-col relative w-full">
-                                <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Start Time</label>
-                                <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full">
-                                    <input
-                                        type="time"
-                                        className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
-                                        style={{ colorScheme: 'dark' }}
-                                    />
-                                </div>
+                    <div className="grid grid-cols-2 gap-8">
+                        <div className="flex flex-col relative w-full">
+                            <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Date</label>
+                            <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full">
+                                <input
+                                    type="date"
+                                    className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                    style={{ colorScheme: 'dark' }}
+                                    value={scheduleDate}
+                                    onChange={(e) => setScheduleDate(e.target.value)}
+                                />
                             </div>
                         </div>
-                    </>
+                        <div className="flex flex-col relative w-full">
+                            <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Start Time</label>
+                            <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full">
+                                <input
+                                    type="time"
+                                    className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                    style={{ colorScheme: 'dark' }}
+                                    value={scheduleTime}
+                                    onChange={(e) => setScheduleTime(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Recurrent Mode Fields */}
@@ -190,11 +258,13 @@ export default function MissionDetailPanel({ waypointsCount = 0, onClearWaypoint
                         {/* Date/Time Inputs Row */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full relative">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none " stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 mr-2 shrink-0"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 mr-2 shrink-0"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
                                 <input
                                     type="date"
                                     className="bg-transparent text-gray-400 text-[12px] outline-none w-full flex-1"
                                     style={{ colorScheme: 'dark' }}
+                                    value={scheduleDate}
+                                    onChange={(e) => setScheduleDate(e.target.value)}
                                 />
                             </div>
                             <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full relative">
@@ -203,6 +273,8 @@ export default function MissionDetailPanel({ waypointsCount = 0, onClearWaypoint
                                     type="time"
                                     className="bg-transparent text-gray-400 text-[12px] outline-none w-full flex-1"
                                     style={{ colorScheme: 'dark' }}
+                                    value={scheduleTime}
+                                    onChange={(e) => setScheduleTime(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -221,10 +293,10 @@ export default function MissionDetailPanel({ waypointsCount = 0, onClearWaypoint
                                     <div className="flex flex-col">
                                         <label className="text-gray-500 text-[11px] mb-2 pl-1 font-medium">Interval</label>
                                         <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 mr-2"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
                                             <input
                                                 type="text"
-                                                defaultValue="2 Hours"
+                                                value={recurrenceInterval}
+                                                onChange={(e) => setRecurrenceInterval(e.target.value)}
                                                 className="bg-transparent text-gray-300 text-[12px] outline-none w-full"
                                             />
                                         </div>
@@ -246,6 +318,43 @@ export default function MissionDetailPanel({ waypointsCount = 0, onClearWaypoint
                         </div>
                     </div>
                 )}
+
+                {/* Error / Success Messages */}
+                {submitError && (
+                    <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-[12px] px-4 py-2.5 rounded">
+                        {submitError}
+                    </div>
+                )}
+                {submitSuccess && (
+                    <div className="bg-green-500/10 border border-green-500/50 text-green-400 text-[12px] px-4 py-2.5 rounded">
+                        {submitSuccess}
+                    </div>
+                )}
+
+                {/* Submit Button */}
+                <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || waypointsCount === 0}
+                    className={`w-full h-[44px] rounded-[4px] text-white text-[14px] font-bold tracking-wide shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
+                        isSubmitting || waypointsCount === 0
+                            ? 'bg-gray-600 cursor-not-allowed opacity-60'
+                            : 'bg-gradient-to-b from-[#ea580c] to-[#9c3804] hover:brightness-110'
+                    }`}
+                >
+                    {isSubmitting ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            Submitting...
+                        </>
+                    ) : (
+                        <>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                            </svg>
+                            Register Mission
+                        </>
+                    )}
+                </button>
             </div>
         </div>
     );

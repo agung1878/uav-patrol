@@ -6,7 +6,7 @@ import DroneInfoPanel from '../panels/DroneInfoPanel';
 import StreamButtonPanel from '../panels/StreamButtonPanel';
 import QuickLaunchDialog from '../components/QuickLaunchDialog';
 import QuickLaunchDialogForm from '../components/QuickLaunchDialogForm';
-import { uavService } from '../../../services/api';
+import { uavService, missionService } from '../../../services/api';
 import useTelemetry from '../../../shared/hooks/useTelemetry';
 
 export default function DashboardPage() {
@@ -47,10 +47,37 @@ export default function DashboardPage() {
 
     // Telemetry — subscribe to all drone IDs from the fetched list
     const uavIds = drones.map(d => d.id);
-    const { telemetry, isConnected: isTelemetryConnected, error: telemetryError } = useTelemetry(uavIds);
+    const { telemetry, isConnected: isTelemetryConnected, error: telemetryError, positionHistory, homePositions } = useTelemetry(uavIds);
 
     // Get telemetry for the selected drone
     const selectedTelemetry = selectedDrone ? telemetry[selectedDrone.id] : null;
+    const selectedTrajectory = selectedDrone ? positionHistory[selectedDrone.id] : null;
+    const selectedHome = selectedDrone ? homePositions[selectedDrone.id] : null;
+
+    // Fetch active mission waypoints for the selected drone
+    const [missionWaypoints, setMissionWaypoints] = useState(null);
+    useEffect(() => {
+        if (!selectedDrone) return;
+        const fetchActiveMission = async () => {
+            try {
+                const data = await missionService.getMissions(1, 50, selectedDrone.id);
+                const activeMission = data?.items?.find(m => m.status === 'In Progress');
+                if (activeMission) {
+                    const detail = await missionService.getMissionDetail(activeMission.id);
+                    setMissionWaypoints(detail?.waypoints || null);
+                } else {
+                    setMissionWaypoints(null);
+                }
+            } catch (err) {
+                console.error('[Dashboard] Failed to fetch mission waypoints:', err);
+                setMissionWaypoints(null);
+            }
+        };
+        fetchActiveMission();
+        // Re-check every 30 seconds
+        const interval = setInterval(fetchActiveMission, 30000);
+        return () => clearInterval(interval);
+    }, [selectedDrone?.id]);
 
     return (
         <div
@@ -66,7 +93,7 @@ export default function DashboardPage() {
                 {/* Bottom Container View */}
                 <div className="h-[240px] flex flex-row p-[14px] gap-[16px] shrink-0 bg-[#27313D] border border-[#2a3240] rounded-[24px] shadow-lg overflow-hidden">
                     <div className={`w-[413px] h-full shrink-0 ${(isLaunchDialogOpen || isLaunchFormOpen) ? 'invisible' : ''}`}>
-                        <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} />
+                        <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} trajectory={selectedTrajectory} homePosition={selectedHome} missionWaypoints={missionWaypoints} />
                     </div>
                     <div className="flex-1 h-full min-w-0">
                         <MissionListPanel />

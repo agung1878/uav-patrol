@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -19,22 +19,29 @@ const dockIcon = new L.DivIcon({
     iconAnchor: [12, 12]
 });
 
+// Drone icon with heading rotation from location telemetry
 const createDroneIcon = (heading) => new L.DivIcon({
     className: 'custom-drone-icon',
     html: `
-        <div style="transform: rotate(${heading || 0}deg); transition: transform 0.3s ease;">
-            <img src="/src/assets/icon_drone.png" alt="Drone" class="w-24 h-24 object-contain" />
+        <div style="transform: rotate(${heading || 0}deg); transition: transform 0.5s ease;">
+            <img src="/src/assets/icon_drone.svg" alt="Drone" class="w-24 h-24 object-contain" />
         </div>
     `,
     iconSize: [96, 96],
     iconAnchor: [48, 48]
 });
 
-const createWaypointIcon = (number) => new L.DivIcon({
+const createWaypointIcon = (number, isActive = false) => new L.DivIcon({
     className: 'custom-waypoint-icon',
-    html: `<div class="w-5 h-5 rounded-full bg-[#3b5374] border border-[#587fae] text-white text-[10px] font-bold flex items-center justify-center shadow-lg">${number}</div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 10]
+    html: `<div class="flex items-center justify-center shadow-lg" style="
+        width: 22px; height: 22px; border-radius: 50%;
+        background: ${isActive ? '#ea580c' : '#3b5374'};
+        border: 2px solid ${isActive ? '#fb923c' : '#587fae'};
+        color: white; font-size: 10px; font-weight: bold;
+        ${isActive ? 'box-shadow: 0 0 8px rgba(234,88,12,0.6);' : ''}
+    ">${number}</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
 });
 
 // Component to auto-pan the map to follow the drone
@@ -56,7 +63,7 @@ function MapFollower({ position, shouldFollow }) {
     return null;
 }
 
-export default function MapViewPanel({ telemetry, selectedDrone }) {
+export default function MapViewPanel({ telemetry, selectedDrone, trajectory, homePosition, missionWaypoints }) {
     const defaultCenter = [-6.200000, 106.816666]; // Jakarta fallback
 
     // Get drone position from telemetry
@@ -67,18 +74,25 @@ export default function MapViewPanel({ telemetry, selectedDrone }) {
         : null;
     const heading = location.heading ?? 0;
 
-    // Home/dock position from the selected drone data (if available)
-    const dockPosition = selectedDrone?.home_latitude && selectedDrone?.home_longitude
-        ? [selectedDrone.home_latitude, selectedDrone.home_longitude]
-        : (selectedDrone?.dockings?.[0]?.latitude && selectedDrone?.dockings?.[0]?.longitude
-            ? [selectedDrone.dockings[0].latitude, selectedDrone.dockings[0].longitude]
-            : null);
+    // Current waypoint index from mission progress
+    const currentWaypoint = telemetry?.mission_progress?.current_waypoint ?? null;
+
+    // Home/dock position: telemetry first-known > drone API data > null
+    const dockPosition = homePosition
+        || (selectedDrone?.home_latitude && selectedDrone?.home_longitude
+            ? [selectedDrone.home_latitude, selectedDrone.home_longitude]
+            : (selectedDrone?.dockings?.[0]?.latitude && selectedDrone?.dockings?.[0]?.longitude
+                ? [selectedDrone.dockings[0].latitude, selectedDrone.dockings[0].longitude]
+                : null));
 
     // Map center — use drone position, then dock, then default
     const center = dronePosition || dockPosition || defaultCenter;
 
     // Max range circle (use drone max_range or default 1800m)
     const maxRange = selectedDrone?.max_range_meter || 1800;
+
+    // Build waypoint polyline (waypoint route path)
+    const waypointPositions = missionWaypoints?.map(wp => [wp.latitude, wp.longitude]) || [];
 
     return (
         <div className="relative w-full h-full bg-[#181d25] rounded-[24px] border border-[#2a3240] overflow-hidden select-none">
@@ -113,7 +127,7 @@ export default function MapViewPanel({ telemetry, selectedDrone }) {
                 {/* Follow drone position */}
                 <MapFollower position={dronePosition} shouldFollow={hasLocation} />
 
-                {/* Max Radius Circle around dock or drone home */}
+                {/* Max Radius Circle around home */}
                 {dockPosition && (
                     <Circle
                         center={dockPosition}
@@ -122,7 +136,37 @@ export default function MapViewPanel({ telemetry, selectedDrone }) {
                     />
                 )}
 
-                {/* Dock/Home Marker */}
+                {/* Trajectory trail — cyan line showing flight path */}
+                {trajectory && trajectory.length > 1 && (
+                    <Polyline
+                        positions={trajectory}
+                        color="#06b6d4"
+                        weight={3}
+                        opacity={0.7}
+                    />
+                )}
+
+                {/* Waypoint route line (dashed orange) */}
+                {waypointPositions.length > 1 && (
+                    <Polyline
+                        positions={waypointPositions}
+                        color="#ea580c"
+                        weight={2}
+                        dashArray="6, 8"
+                        opacity={0.5}
+                    />
+                )}
+
+                {/* Mission Waypoint Markers */}
+                {missionWaypoints && missionWaypoints.map((wp, index) => (
+                    <Marker
+                        key={`wp-${wp.sequence_order || index}`}
+                        position={[wp.latitude, wp.longitude]}
+                        icon={createWaypointIcon(wp.sequence_order || index + 1, currentWaypoint === wp.sequence_order)}
+                    />
+                ))}
+
+                {/* Home/Dock Marker */}
                 {dockPosition && (
                     <Marker position={dockPosition} icon={dockIcon} />
                 )}
@@ -132,17 +176,6 @@ export default function MapViewPanel({ telemetry, selectedDrone }) {
                     <Marker
                         position={dronePosition}
                         icon={createDroneIcon(heading)}
-                    />
-                )}
-
-                {/* Line from dock to drone */}
-                {dockPosition && dronePosition && (
-                    <Polyline
-                        positions={[dockPosition, dronePosition]}
-                        color="#ea580c"
-                        weight={2}
-                        dashArray="4, 6"
-                        opacity={0.6}
                     />
                 )}
             </MapContainer>

@@ -96,5 +96,44 @@ export const missionService = {
         }
 
         return response.json();
+    },
+
+    registerMission: async (missionData) => {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_BASE_URL}/register-mission`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(missionData)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to register mission');
+        }
+
+        return response.json();
+    },
+
+    getMissionDetail: async (missionId) => {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_BASE_URL}/missions/${missionId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to fetch mission detail');
+        }
+
+        return response.json();
     }
 };
