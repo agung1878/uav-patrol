@@ -24,7 +24,7 @@ const createDroneIcon = (heading) => new L.DivIcon({
     className: 'custom-drone-icon',
     html: `
         <div style="transform: rotate(${heading || 0}deg); transition: transform 0.5s ease;">
-            <img src="/src/assets/icon_drone.svg" alt="Drone" class="w-24 h-24 object-contain" />
+            <img src="/src/assets/ic_drone.png" alt="Drone" class="w-24 h-24 object-contain" />
         </div>
     `,
     iconSize: [96, 96],

@@ -62,11 +62,13 @@ export default function DroneInfoPanel({
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                         >
                             <h2 className="text-white text-[18px] font-bold tracking-wide truncate max-w-[90%]">
-                                {selectedDrone?.name || 'Select UAV'}
+                                {selectedDrone?.name || 'DRONE 1'}
                             </h2>
-                            <svg className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
+                            {drones.length > 1 && (
+                                <svg className={`w-4 h-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            )}
                         </div>
                     )}
 
@@ -82,8 +84,7 @@ export default function DroneInfoPanel({
                                         setIsDropdownOpen(false);
                                     }}
                                 >
-                                    <div className="truncate">{drone.name}</div>
-                                    {drone.camera_spec && <div className="text-[10px] text-gray-500 font-mono mt-[1px]">{drone.camera_spec}</div>}
+                                    <div className="truncate">{drone.name || `DRONE ${drone.id}`}</div>
                                 </div>
                             ))}
                         </div>
@@ -92,7 +93,7 @@ export default function DroneInfoPanel({
                     {!isLoading && !errorMsg && (
                         <div className="flex items-center gap-2 mt-[2px]">
                             <a href="#" className="text-[#ea580c] text-[10px] font-semibold tracking-wider hover:underline w-fit">
-                                {selectedDrone?.camera_spec ? `Spec: ${selectedDrone.camera_spec}` : 'View Detail'}
+                                View Detail
                             </a>
                             {/* Telemetry connection indicator */}
                             <div className="flex items-center gap-1">
@@ -104,7 +105,7 @@ export default function DroneInfoPanel({
                         </div>
                     )}
                 </div>
-                <img src="/src/assets/icon_drone.png" alt="Drone" className="h-10 w-auto object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] invert brightness-75 sepia-[0.5] hue-rotate-180 saturate-50" />
+                <img src="/src/assets/ic_drone.png" alt="Drone" className="h-10 w-auto object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] invert brightness-75 sepia-[0.5] hue-rotate-180 saturate-50" />
             </div>
 
             {/* Battery Section */}

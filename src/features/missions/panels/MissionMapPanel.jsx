@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, Circle, useMapEvents } from 'react-leaflet';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Polyline, Circle, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -23,7 +23,7 @@ const dockIcon = new L.DivIcon({
 const createDroneIcon = (heading) => new L.DivIcon({
     className: 'custom-drone-icon',
     html: `
-        <img src="/src/assets/icon_drone.svg" alt="Drone" class="w-24 h-24" />
+        <img src="/src/assets/ic_drone.png" alt="Drone" class="w-24 h-24" />
     `,
     iconSize: [96, 96],
     iconAnchor: [48, 48]
@@ -46,7 +46,24 @@ function MapClickHandler({ onAddWaypoint }) {
     return null;
 }
 
-export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode = true, telemetry, trajectory, homePosition }) {
+// Component to re-center map when drone position becomes available
+function MapCenterUpdater({ dronePosition, homePosition }) {
+    const map = useMap();
+    const hasCentered = useRef(false);
+
+    useEffect(() => {
+        if (hasCentered.current) return;
+        const target = dronePosition || homePosition;
+        if (target) {
+            map.flyTo(target, 16, { duration: 1.5 });
+            hasCentered.current = true;
+        }
+    }, [dronePosition, homePosition, map]);
+
+    return null;
+}
+
+export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode = true, telemetry, trajectory, homePosition, selectedDrone }) {
     const defaultCenter = [-6.200000, 106.816666]; // Jakarta fallback
 
     // Get drone position from telemetry
@@ -58,8 +75,13 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
     // Home/dock position from telemetry (first known location)
     const dockPosition = homePosition || null;
 
-    // Map center priority: drone > home > default
-    const mapCenter = dronePosition || dockPosition || defaultCenter;
+    // Drone home from API (available before telemetry connects)
+    const droneHome = selectedDrone?.home_latitude && selectedDrone?.home_longitude
+        ? [selectedDrone.home_latitude, selectedDrone.home_longitude]
+        : null;
+
+    // Map center priority: drone > telemetry home > API home > default
+    const mapCenter = dronePosition || dockPosition || droneHome || defaultCenter;
 
     // Extract lat/lng pairs for the waypoint polyline
     const linePositions = waypoints.map(wp => [wp.lat, wp.lng]);
@@ -81,6 +103,7 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                 zoomControl={false}
                 scrollWheelZoom={true}
             >
+                <MapCenterUpdater dronePosition={dronePosition} homePosition={dockPosition || droneHome} />
                 {/* Dark CartoDB tile layer */}
                 <TileLayer
                     url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"

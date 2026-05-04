@@ -20,14 +20,15 @@ export default function DashboardPage() {
     const [isDronesLoading, setIsDronesLoading] = useState(true);
     const [dronesError, setDronesError] = useState('');
 
-    // Fetch drones
+    // Fetch drone
     useEffect(() => {
         const fetchDrones = async () => {
             try {
-                const data = await uavService.getMyUavsDropdown();
-                if (data && data.length > 0) {
-                    setDrones(data);
-                    setSelectedDrone(data[0]);
+                const data = await uavService.getUav();
+                if (data && data.id) {
+                    const drone = { ...data, name: 'DRONE 1' };
+                    setDrones([drone]);
+                    setSelectedDrone(drone);
                 } else {
                     setDronesError('No UAVs Available');
                 }

@@ -110,7 +110,7 @@ export default function MissionDetailPanel({
                             {drones.length === 0 && <option value="" className="bg-[#2d3745]">Loading UAVs...</option>}
                             {drones.map(drone => (
                                 <option key={drone.id} value={drone.id} className="bg-[#2d3745]">
-                                    {drone.name} {drone.camera_spec ? `(${drone.camera_spec})` : ''}
+                                    {drone.name || `DRONE ${drone.id}`}
                                 </option>
                             ))}
                         </select>

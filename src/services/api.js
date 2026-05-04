@@ -39,11 +39,11 @@ export const authService = {
 };
 
 export const uavService = {
-    getMyUavsDropdown: async () => {
+    getUav: async () => {
         const token = localStorage.getItem('authToken');
         if (!token) throw new Error('No authentication token found');
 
-        const response = await fetch(`${API_BASE_URL}/uavs/me/dropdown`, {
+        const response = await fetch(`${API_BASE_URL}/uav`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }

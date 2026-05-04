@@ -22,7 +22,7 @@ const dockIcon = new L.DivIcon({
 const droneIcon = new L.DivIcon({
     className: 'custom-drone-icon',
     html: `
-        <img src="/src/assets/icon_drone.png" alt="Drone" class="w-24 h-24 object-contain" />
+        <img src="/src/assets/ic_drone.png" alt="Drone" class="w-24 h-24 object-contain" />
     `,
     iconSize: [96, 96],
     iconAnchor: [48, 48]

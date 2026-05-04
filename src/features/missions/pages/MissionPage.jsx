@@ -27,10 +27,11 @@ export default function MissionPage() {
     useEffect(() => {
         const fetchDrones = async () => {
             try {
-                const data = await uavService.getMyUavsDropdown();
-                if (data && data.length > 0) {
-                    setDrones(data);
-                    setSelectedUavId(data[0].id);
+                const data = await uavService.getUav();
+                if (data && data.id) {
+                    const drone = { ...data, name: 'DRONE 1' };
+                    setDrones([drone]);
+                    setSelectedUavId(drone.id);
                 }
             } catch (err) {
                 console.error('Failed to fetch drones:', err);
@@ -153,6 +154,7 @@ export default function MissionPage() {
                         telemetry={selectedTelemetry}
                         trajectory={selectedTrajectory}
                         homePosition={selectedHome}
+                        selectedDrone={selectedDroneObj}
                     />
                 </div>
             </div>
