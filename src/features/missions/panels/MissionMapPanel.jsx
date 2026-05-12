@@ -23,7 +23,9 @@ const dockIcon = new L.DivIcon({
 const createDroneIcon = (heading) => new L.DivIcon({
     className: 'custom-drone-icon',
     html: `
-        <img src="/src/assets/ic_drone.png" alt="Drone" class="w-24 h-24" />
+        <div style="transform: rotate(${heading || 0}deg); transition: transform 0.5s ease;">
+            <img src="/src/assets/ic_drone.png" alt="Drone" class="w-24 h-24 object-contain" />
+        </div>
     `,
     iconSize: [96, 96],
     iconAnchor: [48, 48]
@@ -63,14 +65,97 @@ function MapCenterUpdater({ dronePosition, homePosition }) {
     return null;
 }
 
-export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode = true, telemetry, trajectory, homePosition, selectedDrone }) {
+export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode = true, telemetry, trajectory, homePosition, selectedDrone, selectedMission }) {
     const defaultCenter = [-6.200000, 106.816666]; // Jakarta fallback
+
+    // --- Mission detail computations (from selectedMission API response) ---
+    const missionWaypoints = selectedMission?.waypoints || [];
+    const missionFlightDistanceM = (() => {
+        if (missionWaypoints.length < 2) return 0;
+        let total = 0;
+        for (let i = 0; i < missionWaypoints.length - 1; i++) {
+            total += L.latLng(missionWaypoints[i].latitude, missionWaypoints[i].longitude)
+                .distanceTo(L.latLng(missionWaypoints[i + 1].latitude, missionWaypoints[i + 1].longitude));
+        }
+        return total;
+    })();
+    // Flight area: bounding box diagonal of all waypoints
+    const missionFlightAreaM = (() => {
+        if (missionWaypoints.length < 2) return 0;
+        const lats = missionWaypoints.map(w => w.latitude);
+        const lngs = missionWaypoints.map(w => w.longitude);
+        return L.latLng(Math.min(...lats), Math.min(...lngs))
+            .distanceTo(L.latLng(Math.max(...lats), Math.max(...lngs)));
+    })();
+    // Total action duration across all waypoints
+    const totalActionDuration = missionWaypoints.reduce((sum, w) => sum + (w.action_duration || 0), 0);
+    // Estimate flight time: distance / assumed speed (5 m/s default) + action durations
+    const missionFlightTimeSec = (() => {
+        if (missionFlightDistanceM <= 0) return 0;
+        const speed = telemetry?.vehicle_state?.flight_speed || 5;
+        return Math.round(missionFlightDistanceM / speed) + totalActionDuration;
+    })();
+    const formatTime = (totalSec) => {
+        if (totalSec <= 0) return '--';
+        const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+        const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+        const s = String(totalSec % 60).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    };
+    const formatSchedule = (schedule) => {
+        if (!schedule) return '';
+        const d = new Date(schedule);
+        if (isNaN(d.getTime())) return schedule;
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}  ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
 
     // Get drone position from telemetry
     const location = telemetry?.location || {};
     const hasLocation = location.latitude != null && location.longitude != null;
     const dronePosition = hasLocation ? [location.latitude, location.longitude] : null;
     const heading = location.heading ?? 0;
+
+    // --- Drone Condition: live telemetry values ---
+    // Battery from telemetry metric "battery"
+    const battery = telemetry?.battery || {};
+    const batteryPercent = battery.percent != null ? Math.round(battery.percent) : null;
+    const batteryLabel = batteryPercent != null
+        ? `${batteryPercent}% (${batteryPercent >= 60 ? 'Good' : batteryPercent >= 30 ? 'Fair' : 'Low'})`
+        : '--';
+
+    // Drone speed from telemetry metric "vehicle_state" (flight_speed in m/s)
+    const vehicleState = telemetry?.vehicle_state || {};
+    const flightSpeed = vehicleState.flight_speed != null ? vehicleState.flight_speed : null;
+    const speedLabel = flightSpeed != null ? `${flightSpeed.toFixed(1)} m/s` : '--';
+
+    // Flight distance: sum of Leaflet distances between sequential waypoints
+    // If drone position is known, include drone → first waypoint
+    const flightDistanceM = (() => {
+        if (waypoints.length === 0) return 0;
+        let total = 0;
+        const pts = waypoints.map(wp => L.latLng(wp.lat, wp.lng));
+        // Drone to first waypoint
+        if (dronePosition) {
+            total += L.latLng(dronePosition[0], dronePosition[1]).distanceTo(pts[0]);
+        }
+        // Between waypoints
+        for (let i = 0; i < pts.length - 1; i++) {
+            total += pts[i].distanceTo(pts[i + 1]);
+        }
+        return total;
+    })();
+    const distanceLabel = flightDistanceM > 0 ? `${Math.round(flightDistanceM)} m` : '--';
+
+    // Flight time estimation: distance / speed
+    const flightTimeLabel = (() => {
+        if (flightDistanceM <= 0 || !flightSpeed || flightSpeed <= 0) return '--';
+        const totalSec = Math.round(flightDistanceM / flightSpeed);
+        const h = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+        const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+        const s = String(totalSec % 60).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    })();
 
     // Home/dock position from telemetry (first known location)
     const dockPosition = homePosition || null;
@@ -91,7 +176,8 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
         ? [dronePosition, ...linePositions]
         : (waypoints.length > 0 ? linePositions : []);
 
-    // Max range circle center (use home if available)
+    // Max range circle (use drone max_range or default 1800m)
+    const maxRange = selectedDrone?.max_range_meter || 1800;
     const circleCenter = dockPosition || dronePosition;
 
     return (
@@ -114,7 +200,7 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
 
                 {/* Max Radius Circle */}
                 {circleCenter && (
-                    <Circle center={circleCenter} radius={1800} pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1, dashArray: '4, 8' }} />
+                    <Circle center={circleCenter} radius={maxRange} pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1, dashArray: '4, 8' }} />
                 )}
 
                 {/* Trajectory trail — cyan line showing where drone has flown */}
@@ -142,10 +228,30 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                     <Marker position={dronePosition} icon={createDroneIcon(heading)} />
                 )}
 
-                {/* Waypoints */}
+                {/* Waypoints (add-mode) */}
                 {waypoints.map((wp, index) => (
                     <Marker key={wp.id} position={[wp.lat, wp.lng]} icon={createWaypointIcon(index + 1)} />
                 ))}
+
+                {/* Mission waypoints from selected mission (view-mode) */}
+                {isViewMode && missionWaypoints.length > 0 && (
+                    <>
+                        <Polyline
+                            positions={missionWaypoints.map(wp => [wp.latitude, wp.longitude])}
+                            color="#ea580c"
+                            weight={2}
+                            dashArray="6, 8"
+                            opacity={0.6}
+                        />
+                        {missionWaypoints.map((wp, index) => (
+                            <Marker
+                                key={`mission-wp-${wp.id || index}`}
+                                position={[wp.latitude, wp.longitude]}
+                                icon={createWaypointIcon(wp.sequence_order || index + 1)}
+                            />
+                        ))}
+                    </>
+                )}
             </MapContainer>
 
             {/* Map Custom Controls (Zoom/Location) */}
@@ -179,19 +285,23 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                         <div className="grid grid-cols-2 gap-y-5 gap-x-2">
                             <div className="flex flex-col">
                                 <span className="text-gray-400 text-[10px] mb-1">Flight Estimation (min)</span>
-                                <span className="text-white text-xs font-mono">00:20:30</span>
+                                <span className="text-white text-xs font-mono">{formatTime(missionFlightTimeSec)}</span>
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-gray-400 text-[10px] mb-1">Battery Left (min)</span>
-                                <span className="text-white text-xs font-mono">00:20:30</span>
+                                <span className="text-gray-400 text-[10px] mb-1">Status</span>
+                                <span className={`text-xs font-bold ${
+                                    selectedMission?.status === 'Completed' ? 'text-green-400' :
+                                    selectedMission?.status === 'In Progress' ? 'text-blue-400' :
+                                    selectedMission?.status === 'Waiting' ? 'text-amber-400' : 'text-white'
+                                }`}>{selectedMission?.status || '--'}</span>
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-gray-400 text-[10px] mb-1">Flight Distance (meter)</span>
-                                <span className="text-white text-xs font-bold">250 Meter</span>
+                                <span className="text-white text-xs font-bold">{missionFlightDistanceM > 0 ? `${Math.round(missionFlightDistanceM)} Meter` : '--'}</span>
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-gray-400 text-[10px] mb-1">Flight Area</span>
-                                <span className="text-white text-xs font-bold">250 Meter</span>
+                                <span className="text-white text-xs font-bold">{missionFlightAreaM > 0 ? `${Math.round(missionFlightAreaM)} Meter` : '--'}</span>
                             </div>
                         </div>
                     </div>
@@ -205,35 +315,37 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                                     <circle cx="12" cy="10" r="3"></circle>
                                 </svg>
                                 <div>
-                                    <h3 className="text-white text-[13px] font-bold">Patrol On 3 Site</h3>
-                                    <p className="text-gray-400 text-[10px] mt-0.5">12/12/2025  16:34</p>
+                                    <h3 className="text-white text-[13px] font-bold">{selectedMission?.mission_name || 'No Mission Selected'}</h3>
+                                    <p className="text-gray-400 text-[10px] mt-0.5">{formatSchedule(selectedMission?.schedule)}</p>
                                 </div>
                             </div>
                             <div className="border border-gray-500 rounded-full px-3 py-1 bg-[#171c24]">
-                                <span className="text-gray-300 text-[10px] font-semibold">{waypoints.length || 3} Waypoint</span>
+                                <span className="text-gray-300 text-[10px] font-semibold">{missionWaypoints.length} Waypoint</span>
                             </div>
                         </div>
 
                         <div className="max-h-[220px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                            {(waypoints.length ? waypoints : [{ id: 1 }, { id: 2 }, { id: 3 }]).map((wp, i) => (
-                                <div key={wp.id} className="bg-[#171c24] border border-[#2a3240] rounded-lg p-3 relative">
-                                    <h4 className="text-white text-xs font-bold mb-2 tracking-wide">Point {i + 1}</h4>
+                            {missionWaypoints.length > 0 ? missionWaypoints.map((wp, i) => (
+                                <div key={wp.id || i} className="bg-[#171c24] border border-[#2a3240] rounded-lg p-3 relative">
+                                    <h4 className="text-white text-xs font-bold mb-2 tracking-wide">Point {wp.sequence_order || i + 1}</h4>
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="flex flex-col gap-1">
                                             <span className="text-gray-400 text-[9px] uppercase">Altitude (M)</span>
-                                            <span className="text-white text-[11px] font-mono pl-1">150</span>
+                                            <span className="text-white text-[11px] font-mono pl-1">{wp.altitude ?? '--'}</span>
                                         </div>
                                         <div className="flex flex-col gap-1">
-                                            <span className="text-gray-400 text-[9px] uppercase">Camera Tilt</span>
-                                            <span className="text-white text-[11px] font-mono pl-1">30</span>
+                                            <span className="text-gray-400 text-[9px] uppercase">Duration</span>
+                                            <span className="text-white text-[11px] font-mono pl-1">{wp.action_duration ?? '--'}</span>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <span className="text-gray-400 text-[9px] uppercase">Action</span>
-                                            <span className="text-white text-[11px] pl-1">Video Record</span>
+                                            <span className="text-white text-[11px] pl-1">{wp.action || '--'}</span>
                                         </div>
                                     </div>
                                 </div>
-                            ))}
+                            )) : (
+                                <div className="text-gray-500 text-xs italic text-center py-4">Click a mission to view waypoints</div>
+                            )}
                         </div>
                     </div>
                 </>
@@ -249,19 +361,19 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                         <div className="grid grid-cols-2 gap-y-4 gap-x-2 mb-4">
                             <div className="flex flex-col">
                                 <span className="text-gray-400 text-[10px] mb-1">Battery Level</span>
-                                <span className="text-white text-[11px] font-semibold">82% (Good)</span>
+                                <span className={`text-[11px] font-semibold ${batteryPercent != null ? (batteryPercent >= 60 ? 'text-green-400' : batteryPercent >= 30 ? 'text-amber-400' : 'text-red-400') : 'text-white'}`}>{batteryLabel}</span>
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-gray-400 text-[10px] mb-1">Flight Estimation (min)</span>
-                                <span className="text-white text-[11px] font-mono">00:30:45</span>
+                                <span className="text-gray-400 text-[10px] mb-1">Flight Time Estimation</span>
+                                <span className="text-white text-[11px] font-mono">{flightTimeLabel}</span>
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-gray-400 text-[10px] mb-1">Drone Speed Avg</span>
-                                <span className="text-white text-[11px] font-semibold">10 km/h</span>
+                                <span className="text-gray-400 text-[10px] mb-1">Drone Speed</span>
+                                <span className="text-white text-[11px] font-semibold">{speedLabel}</span>
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-gray-400 text-[10px] mb-1">Flight Estimation (min)</span>
-                                <span className="text-white text-[11px] font-mono">00:30:45</span>
+                                <span className="text-gray-400 text-[10px] mb-1">Flight Distance Estimation</span>
+                                <span className="text-white text-[11px] font-mono">{distanceLabel}</span>
                             </div>
                         </div>
 

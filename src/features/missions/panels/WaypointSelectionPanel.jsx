@@ -74,9 +74,9 @@ export default function WaypointSelectionPanel({
                                                 onChange={(e) => onWaypointDataChange(wp.id, 'action', e.target.value)}
                                             >
                                                 <option value="hold" className="bg-[#1c222c]">Hold</option>
-                                                <option value="take_photo" className="bg-[#1c222c]">Take Photo</option>
-                                                <option value="video_record" className="bg-[#1c222c]">Video Record</option>
-                                                <option value="survey" className="bg-[#1c222c]">Survey</option>
+                                                <option value="Take Picture" className="bg-[#1c222c]">Take Photo</option>
+                                                <option value="Record Video" className="bg-[#1c222c]">Video Record</option>
+
                                             </select>
                                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 pointer-events-none absolute right-2">
                                                 <path d="M6 9l6 6 6-6" />

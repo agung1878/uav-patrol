@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import useTelemetry from '../hooks/useTelemetry';
+import { uavService } from '../../services/api';
 
 const SatelliteIcon = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
@@ -53,6 +55,35 @@ export default function AppHeader() {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsRef = useRef(null);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [uavIds, setUavIds] = useState([]);
+
+    // Fetch UAV on mount to get ID for telemetry subscription
+    useEffect(() => {
+        const fetchUav = async () => {
+            try {
+                const data = await uavService.getUav();
+                if (data && data.id) setUavIds([data.id]);
+            } catch (err) {
+                console.error('[AppHeader] Failed to fetch UAV:', err);
+            }
+        };
+        fetchUav();
+    }, []);
+
+    // Subscribe to telemetry
+    const { telemetry } = useTelemetry(uavIds);
+    const uavTelemetry = uavIds.length > 0 ? telemetry[uavIds[0]] || {} : {};
+
+    // GPS metric: { sat_count, fix_type, rtk_type, ... }
+    const gps = uavTelemetry.gps || {};
+    const satCount = gps.satellites ?? '--';
+    const rtkType = gps.fix_type_label || gps.fix_type_label || 'N/A';
+
+    // Battery metric: { percent, voltage, temperature, ... }
+    const battery = uavTelemetry.battery || {};
+    const batteryPercent = battery.percent != null ? Math.round(battery.percent) : '--';
+    const batteryVoltage = battery.voltage != null ? battery.voltage.toFixed(1) : '--';
+    const batteryTemp = battery.temperature != null ? `${Math.round(battery.temperature)}°C` : '--';
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -144,28 +175,27 @@ export default function AppHeader() {
             {/* Right Section - Status, Telemetry and Clock */}
             <div className="flex items-center space-x-8 h-full">
 
-                {/* GNSS */}
+                {/* GNSS / RTK */}
                 <div className="flex flex-col items-center justify-center">
-                    <span className="text-[10px] font-semibold text-gray-100 tracking-wider font-sans">GNSS+</span>
+                    <span className="text-[10px] font-semibold text-gray-100 tracking-wider font-sans">{rtkType}</span>
                     <div className="flex items-center space-x-1 mt-[1px]">
                         <SatelliteIcon />
-                        <span className="text-[13px] font-bold text-white tracking-widest">31</span>
+                        <span className="text-[13px] font-bold text-white tracking-widest">{satCount}</span>
                     </div>
                 </div>
 
                 {/* Signals */}
                 <div className="flex flex-col justify-center space-y-1">
                     <SignalRender level={3} label="RC" />
-                    <SignalRender level={4} label="4G" />
                 </div>
 
                 {/* Battery */}
                 <div className="flex items-center space-x-2">
-                    <span className="text-[22px] font-semibold tracking-tighter text-white">80%</span>
-                    <BatteryVertical level={80} />
+                    <span className="text-[22px] font-semibold tracking-tighter text-white">{batteryPercent !== '--' ? `${batteryPercent}%` : '--%'}</span>
+                    <BatteryVertical level={typeof batteryPercent === 'number' ? batteryPercent : 0} />
                     <div className="flex flex-col text-[10px] font-semibold text-gray-100 leading-[1.15] space-y-[1px] ml-1">
-                        <span>25°C</span>
-                        <span>51.8V</span>
+                        <span>{batteryTemp}</span>
+                        <span>{batteryVoltage !== '--' ? `${batteryVoltage}V` : '--'}</span>
                     </div>
                 </div>
 

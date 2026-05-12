@@ -1,21 +1,63 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { missionService } from '../../../services/api';
 
-const missions = [
-    { id: 1, date: '12/12/2025\n16:34:00', name: 'Patrol on 3 Site', action: 'Video Record', status: 'Waiting' },
-    { id: 2, date: '12/12/2025\n16:34:00', name: 'Inspection on 5 Site', action: 'Audio Record', status: 'Completed' },
-    { id: 3, date: '12/12/2025\n16:34:00', name: 'Follow-up on 2 Site', action: 'Video Record', status: 'In Progress', active: true },
-    { id: 4, date: '12/12/2025\n16:34:00', name: 'Maintenance on 1 Site', action: 'No Record', status: 'Scheduled' },
-    { id: 5, date: '12/12/2025\n16:34:00', name: 'Emergency Response', action: 'Video Record', status: 'Resolved' },
-    { id: 6, date: '12/12/2025\n16:34:00', name: 'Debriefing on 6 Site', action: 'Audio Record', status: 'Pending' }
-];
-
-export default function MissionListPanel({ onAddMission }) {
+export default function MissionListPanel({ onAddMission, onSelectMission }) {
     const navigate = useNavigate();
+    const [missions, setMissions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [totalMissions, setTotalMissions] = useState(0);
+
+    useEffect(() => {
+        const fetchMissions = async () => {
+            try {
+                setLoading(true);
+                const data = await missionService.getMissions(1, 50);
+
+                // Format missions for the table
+                const formattedMissions = (data.items || []).map(m => {
+                    const scheduleDate = new Date(m.schedule);
+                    const formattedDate = scheduleDate.toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                    const formattedTime = scheduleDate.toLocaleTimeString('en-GB', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+
+                    return {
+                        id: m.id,
+                        date: `${formattedDate}\n${formattedTime}`,
+                        name: m.mission_name,
+                        wps: m.waypoint_count,
+                        status: m.status,
+                        active: m.status === 'In Progress'
+                    };
+                });
+
+                setMissions(formattedMissions);
+                setTotalMissions(data.total || 0);
+            } catch (err) {
+                console.error('Failed to fetch missions:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMissions();
+    }, []);
 
     const handleRowClick = (mission) => {
         if (mission.status === 'In Progress') {
             navigate('/missions/active');
+        }
+        // Notify parent to fetch & display mission detail on map
+        if (onSelectMission) {
+            onSelectMission(mission.id);
         }
     };
 
@@ -25,7 +67,7 @@ export default function MissionListPanel({ onAddMission }) {
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center space-x-3">
                     <h2 className="text-white text-[18px] font-bold tracking-wide">Mission List</h2>
-                    <span className="text-gray-400 text-[11px] font-semibold mt-1">34 Mission</span>
+                    <span className="text-gray-400 text-[11px] font-semibold mt-1">{totalMissions} Mission</span>
                 </div>
                 <button
                     onClick={onAddMission}
@@ -37,37 +79,45 @@ export default function MissionListPanel({ onAddMission }) {
             </div>
 
             {/* Table Header */}
-            <div className="grid grid-cols-[1fr_2fr_1.5fr_1fr] text-[10px] font-semibold text-gray-400 border-b border-[#2a3240] pb-2 mb-2 uppercase tracking-wider">
-                <div>Date</div>
-                <div>Mission</div>
-                <div>Action</div>
-                <div>Status</div>
+            <div className="grid grid-cols-[1.2fr_2fr_1fr_1.2fr] text-[10px] font-semibold text-gray-400 border-b border-[#2a3240] pb-2 mb-2 uppercase tracking-wider">
+                <div className="text-left">Date</div>
+                <div className="text-left">Mission</div>
+                <div className="text-center">Waypoints</div>
+                <div className="text-right pr-2">Status</div>
             </div>
 
             {/* Table Body */}
             <div className="flex-1 overflow-y-auto pr-1 space-y-1 custom-scrollbar">
-                {missions.map((mission) => (
-                    <div
-                        key={mission.id}
-                        className={`grid grid-cols-[1fr_2fr_1.5fr_1fr] items-center text-xs py-2 px-1 rounded transition-colors ${
-                            mission.active ? 'bg-[#202834]' : 'hover:bg-[#202834]/50'
-                        } ${mission.status === 'In Progress' ? 'cursor-pointer' : ''}`}
-                        onClick={() => handleRowClick(mission)}
-                    >
-                        <div className="text-gray-300 leading-tight whitespace-pre-line text-[10px]">
-                            {mission.date}
-                        </div>
-                        <div className={`text-[11px] font-medium ${mission.active ? 'text-[#3b82f6]' : 'text-gray-200'}`}>
-                            {mission.name}
-                        </div>
-                        <div className="text-gray-300 text-[11px]">
-                            {mission.action}
-                        </div>
-                        <div className="text-gray-300 text-[11px]">
-                            {mission.status}
-                        </div>
+                {loading ? (
+                    <div className="flex justify-center items-center h-20 text-gray-400 text-xs">
+                        Loading missions...
                     </div>
-                ))}
+                ) : missions.length === 0 ? (
+                    <div className="flex justify-center items-center h-20 text-gray-500 text-xs italic">
+                        No missions found
+                    </div>
+                ) : (
+                    missions.map((mission) => (
+                        <div
+                            key={mission.id}
+                            className={`grid grid-cols-[1.2fr_2fr_1fr_1.2fr] items-center text-xs py-2 px-1 rounded transition-colors cursor-pointer ${mission.active ? 'bg-[#202834]' : 'hover:bg-[#202834]/50'}`}
+                            onClick={() => handleRowClick(mission)}
+                        >
+                            <div className="text-gray-300 leading-tight whitespace-pre-line text-[10px] text-left">
+                                {mission.date}
+                            </div>
+                            <div className={`text-[11px] font-medium text-left ${mission.active ? 'text-[#3b82f6]' : 'text-gray-200'}`}>
+                                {mission.name}
+                            </div>
+                            <div className="text-gray-300 text-[11px] text-center">
+                                {mission.wps}
+                            </div>
+                            <div className="text-gray-300 text-[11px] text-right pr-2">
+                                {mission.status}
+                            </div>
+                        </div>
+                    ))
+                )}
             </div>
         </div>
     );

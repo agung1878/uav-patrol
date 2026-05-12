@@ -84,7 +84,7 @@ export const missionService = {
         if (!token) throw new Error('No authentication token found');
 
         const uavParam = uavId ? `&uav_id=${uavId}` : '';
-        const response = await fetch(`${API_BASE_URL}/missions/me?page=${page}&limit=${limit}${uavParam}`, {
+        const response = await fetch(`${API_BASE_URL}/missions?page=${page}&limit=${limit}${uavParam}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -98,11 +98,32 @@ export const missionService = {
         return response.json();
     },
 
+    previewConflicts: async (payload) => {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_BASE_URL}/mission-conflicts/preview`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to preview conflicts');
+        }
+
+        return response.json();
+    },
+
     registerMission: async (missionData) => {
         const token = localStorage.getItem('authToken');
         if (!token) throw new Error('No authentication token found');
 
-        const response = await fetch(`${API_BASE_URL}/register-mission`, {
+        const response = await fetch(`${API_BASE_URL}/missions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -111,12 +132,17 @@ export const missionService = {
             body: JSON.stringify(missionData)
         });
 
+        const data = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Failed to register mission');
+            // Return structured error for conflict/guard responses so UI can handle them
+            if (data.code === 'mission_schedule_conflict' || data.code === 'mission_recent_history_guard') {
+                return { error: true, ...data };
+            }
+            throw new Error(data.error || 'Failed to register mission');
         }
 
-        return response.json();
+        return data;
     },
 
     getMissionDetail: async (missionId) => {

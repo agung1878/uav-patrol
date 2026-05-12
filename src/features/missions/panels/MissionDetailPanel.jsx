@@ -21,60 +21,59 @@ export default function MissionDetailPanel({
     submitSuccess = ''
 }) {
     const [missionName, setMissionName] = useState('');
-    const [timeMode, setTimeMode] = useState('Later');
+    const [takeoffAltitude, setTakeoffAltitude] = useState('');
+    const [timeMode, setTimeMode] = useState('One time');
     const [scheduleDate, setScheduleDate] = useState('');
     const [scheduleTime, setScheduleTime] = useState('');
 
     // Recurrent fields
-    const [recurrentType, setRecurrentType] = useState('Monthly');
-    const [selectedMonths, setSelectedMonths] = useState([]);
-    const [selectedWeeks, setSelectedWeeks] = useState([]);
-    const [selectedDays, setSelectedDays] = useState([]);
-    const [isIntervalEnabled, setIsIntervalEnabled] = useState(false);
-    const [recurrenceInterval, setRecurrenceInterval] = useState('2');
+    const [recurrentType, setRecurrentType] = useState('daily');
+    const [selectedDays, setSelectedDays] = useState([1]);
+    const [monthlyDay, setMonthlyDay] = useState(new Date().getDate());
+    const [recurrenceInterval, setRecurrenceInterval] = useState('1');
+    const [dailyRepeatTimes, setDailyRepeatTimes] = useState(['09:00']);
+    const [dailyEndDate, setDailyEndDate] = useState('');
 
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'];
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     const toggleSelection = (setter, itemIndex) => {
         setter(prev => prev.includes(itemIndex) ? prev.filter(i => i !== itemIndex) : [...prev, itemIndex]);
     };
 
+    const addDailyTime = () => {
+        setDailyRepeatTimes(prev => [...prev, '09:00']);
+    };
+
+    const removeDailyTime = (index) => {
+        setDailyRepeatTimes(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+    };
+
+    const updateDailyTime = (index, value) => {
+        setDailyRepeatTimes(prev => prev.map((item, i) => (i === index ? value : item)));
+    };
+
     const handleSubmit = () => {
-        let schedule = null;
-        let isRecurring = false;
-        let recurrenceUnit = null;
-        let recInterval = null;
-
-        // Format as local datetime string: "2026-04-07 13:10:00"
-        const formatSchedule = (date, time) => {
-            if (date && time) return `${date} ${time}:00`;
-            if (date) return `${date} 00:00:00`;
-            // Fallback: current local time
-            const now = new Date();
-            const pad = (n) => String(n).padStart(2, '0');
-            return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-        };
-
-        if (timeMode === 'Now') {
-            schedule = formatSchedule(null, null);
-        } else if (timeMode === 'Later') {
-            schedule = formatSchedule(scheduleDate, scheduleTime);
-        } else if (timeMode === 'Recurrent') {
-            isRecurring = true;
-            recurrenceUnit = recurrentType.toLowerCase();
-            recInterval = isIntervalEnabled ? parseInt(recurrenceInterval) || 1 : 1;
-            schedule = formatSchedule(scheduleDate, scheduleTime);
-        }
-
         onSubmit?.({
             missionName,
+            takeoffAltitude,
             timeMode,
-            schedule,
-            isRecurring,
-            recurrenceUnit,
-            recurrenceInterval: recInterval
+            // One-time fields
+            scheduleDate,
+            scheduleTime,
+            // Recurrent common
+            recurrentType,
+            // Daily fields
+            dailyRepeatTimes: dailyRepeatTimes.filter(Boolean),
+            dailyStartDate: scheduleDate,
+            dailyEndDate,
+            // Weekly fields
+            selectedDays,
+            weeklyTime: scheduleTime,
+            weeklyWeeks: parseInt(recurrenceInterval, 10) || 1,
+            // Monthly fields
+            monthlyDay: parseInt(monthlyDay, 10) || 1,
+            monthlyMonths: parseInt(recurrenceInterval, 10) || 1,
+            monthlyTime: scheduleTime,
         });
     };
 
@@ -99,7 +98,7 @@ export default function MissionDetailPanel({
             <div className="flex flex-col gap-5 w-full pr-8">
 
                 {/* UAV Selection */}
-                <div className="flex flex-col">
+                {/* <div className="flex flex-col">
                     <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Select UAV</label>
                     <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 relative focus-within:border-gray-400 transition-colors">
                         <select
@@ -110,52 +109,81 @@ export default function MissionDetailPanel({
                             {drones.length === 0 && <option value="" className="bg-[#2d3745]">Loading UAVs...</option>}
                             {drones.map(drone => (
                                 <option key={drone.id} value={drone.id} className="bg-[#2d3745]">
-                                    {drone.name || `DRONE ${drone.id}`}
+                                    {drone.name} {drone.camera_spec ? `(${drone.camera_spec})` : ''}
                                 </option>
                             ))}
                         </select>
-                        <div className="pointer-events-none absolute right-4 text-gray-400">
-                            <ChevronDownIcon />
+                    </div>
+                </div> */}
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col">
+                        <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Drone</label>
+                        <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 focus-within:border-gray-400 transition-colors">
+                            <select
+                                value={selectedUavId || ''}
+                                onChange={(e) => onSelectUav(parseInt(e.target.value))}
+                                className="bg-transparent text-gray-100 text-[13px] outline-none w-full appearance-none cursor-pointer"
+                            >
+                                {drones.length === 0 && <option value="" className="bg-[#2d3745]">Loading UAVs...</option>}
+                                {drones.map(drone => (
+                                    <option key={drone.id} value={drone.id} className="bg-[#2d3745]">
+                                        {drone.name} {drone.camera_spec ? `(${drone.camera_spec})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">TakeOff Altitude</label>
+                        <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 relative focus-within:border-gray-400 transition-colors">
+                            <input
+                                type="number"
+                                className="bg-transparent text-gray-100 text-[13px] outline-none w-full"
+                                placeholder="15"
+                                value={takeoffAltitude}
+                                onChange={(e) => setTakeoffAltitude(e.target.value)}
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Mission Name */}
-                <div className="flex flex-col">
-                    <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Mission Name</label>
-                    <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 focus-within:border-gray-400 transition-colors">
-                        <input
-                            type="text"
-                            className="bg-transparent text-gray-100 text-[13px] outline-none w-full"
-                            placeholder="Enter mission name"
-                            value={missionName}
-                            onChange={(e) => setMissionName(e.target.value)}
-                        />
+                {/* Mission name + time mode row */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col">
+                        <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Mission Name</label>
+                        <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 focus-within:border-gray-400 transition-colors">
+                            <input
+                                type="text"
+                                className="bg-transparent text-gray-100 text-[13px] outline-none w-full"
+                                placeholder="Mission 1"
+                                value={missionName}
+                                onChange={(e) => setMissionName(e.target.value)}
+                            />
+                        </div>
                     </div>
-                </div>
-
-                {/* Time Mode */}
-                <div className="flex flex-col">
-                    <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Time Mode</label>
-                    <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 relative focus-within:border-gray-400 transition-colors">
-                        <select
-                            value={timeMode}
-                            onChange={(e) => setTimeMode(e.target.value)}
-                            className="bg-transparent text-gray-100 text-[13px] outline-none w-full appearance-none cursor-pointer"
-                        >
-                            <option value="Now" className="bg-[#2d3745]">Now</option>
-                            <option value="Later" className="bg-[#2d3745]">Later</option>
-                            <option value="Recurrent" className="bg-[#2d3745]">Recurrent</option>
-                        </select>
-                        <div className="pointer-events-none absolute right-4 text-gray-400">
-                            <ChevronDownIcon />
+                    <div className="flex flex-col">
+                        <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Time Mode</label>
+                        <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 relative focus-within:border-gray-400 transition-colors">
+                            <select
+                                value={timeMode}
+                                onChange={(e) => setTimeMode(e.target.value)}
+                                className="bg-transparent text-gray-100 text-[13px] outline-none w-full appearance-none cursor-pointer"
+                            >
+                                <option value="One time" className="bg-[#2d3745]">One time</option>
+                                <option value="Now" className="bg-[#2d3745]">Now</option>
+                                <option value="Recurrent" className="bg-[#2d3745]">Recurrent</option>
+                            </select>
+                            <div className="pointer-events-none absolute right-4 text-gray-400">
+                                <ChevronDownIcon />
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Later Mode Fields */}
-                {timeMode === 'Later' && (
-                    <div className="grid grid-cols-2 gap-8">
+                {/* One-time fields */}
+                {timeMode === 'One time' && (
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col relative w-full">
                             <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Date</label>
                             <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full">
@@ -186,136 +214,165 @@ export default function MissionDetailPanel({
                 {/* Recurrent Mode Fields */}
                 {timeMode === 'Recurrent' && (
                     <div className="bg-[#242c38] rounded-xl flex flex-col gap-4 w-full">
-                        {/* Type Row */}
-                        <div className="flex justify-between items-center mb-1">
-                            <span className="text-gray-400 text-[11px] pl-1 font-medium">Type</span>
-                            <div className="h-[28px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 relative w-[100px] cursor-pointer hover:border-gray-400 transition-colors">
-                                <select
-                                    value={recurrentType}
-                                    onChange={(e) => setRecurrentType(e.target.value)}
-                                    className="bg-transparent text-gray-400 text-[11px] outline-none w-full appearance-none cursor-pointer"
-                                >
-                                    <option value="Monthly" className="bg-[#2d3745]">Monthly</option>
-                                    <option value="Weekly" className="bg-[#2d3745]">Weekly</option>
-                                    <option value="Daily" className="bg-[#2d3745]">Daily</option>
-                                </select>
-                                <div className="pointer-events-none absolute right-2 text-gray-400">
-                                    <ChevronDownIcon />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Selection Grid */}
-                        {recurrentType === 'Monthly' && (
-                            <div className="grid grid-cols-12 rounded-[6px] overflow-hidden border border-[#3b4452]">
-                                {months.map((month, idx) => (
-                                    <button
-                                        key={month}
-                                        onClick={() => toggleSelection(setSelectedMonths, idx)}
-                                        className={`py-[6px] text-[9.5px] font-bold tracking-wide transition-colors ${selectedMonths.includes(idx)
-                                            ? 'bg-[#ea580c] text-white'
-                                            : 'bg-[#2d3745] text-gray-400 hover:bg-[#3b4452] hover:text-gray-200'
-                                            } ${idx !== 11 ? 'border-r border-[#3b4452]' : ''}`}
+                        <div className={`grid gap-4 ${recurrentType === 'daily' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                            <div className="flex flex-col">
+                                <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Type</label>
+                                <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 relative cursor-pointer hover:border-gray-400 transition-colors">
+                                    <select
+                                        value={recurrentType}
+                                        onChange={(e) => setRecurrentType(e.target.value)}
+                                        className="bg-transparent text-gray-100 text-[12px] outline-none w-full appearance-none cursor-pointer"
                                     >
-                                        {month}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                        {recurrentType === 'Weekly' && (
-                            <div className="grid grid-cols-5 rounded-[6px] overflow-hidden border border-[#3b4452]">
-                                {weeks.map((week, idx) => (
-                                    <button
-                                        key={week}
-                                        onClick={() => toggleSelection(setSelectedWeeks, idx)}
-                                        className={`py-[6px] text-[11px] font-bold tracking-wide transition-colors ${selectedWeeks.includes(idx)
-                                            ? 'bg-[#ea580c] text-white'
-                                            : 'bg-[#2d3745] text-gray-400 hover:bg-[#3b4452] hover:text-gray-200'
-                                            } ${idx !== 4 ? 'border-r border-[#3b4452]' : ''}`}
-                                    >
-                                        {week}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                        {recurrentType === 'Daily' && (
-                            <div className="grid grid-cols-7 rounded-[6px] overflow-hidden border border-[#3b4452]">
-                                {days.map((day, idx) => (
-                                    <button
-                                        key={day}
-                                        onClick={() => toggleSelection(setSelectedDays, idx)}
-                                        className={`py-[6px] text-[11px] font-bold tracking-wide transition-colors ${selectedDays.includes(idx)
-                                            ? 'bg-[#ea580c] text-white'
-                                            : 'bg-[#2d3745] text-gray-400 hover:bg-[#3b4452] hover:text-gray-200'
-                                            } ${idx !== 6 ? 'border-r border-[#3b4452]' : ''}`}
-                                    >
-                                        {day}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Date/Time Inputs Row */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full relative">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 mr-2 shrink-0"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
-                                <input
-                                    type="date"
-                                    className="bg-transparent text-gray-400 text-[12px] outline-none w-full flex-1"
-                                    style={{ colorScheme: 'dark' }}
-                                    value={scheduleDate}
-                                    onChange={(e) => setScheduleDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full relative">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 mr-2 shrink-0"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                                <input
-                                    type="time"
-                                    className="bg-transparent text-gray-400 text-[12px] outline-none w-full flex-1"
-                                    style={{ colorScheme: 'dark' }}
-                                    value={scheduleTime}
-                                    onChange={(e) => setScheduleTime(e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Interval Section */}
-                        <div className="mt-2 text-gray-200">
-                            <label className="flex items-center cursor-pointer group w-fit mb-4" onClick={() => setIsIntervalEnabled(!isIntervalEnabled)}>
-                                <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center mr-2 transition-colors ${isIntervalEnabled ? 'border-gray-400' : 'border-gray-500'}`}>
-                                    {isIntervalEnabled && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                                </div>
-                                <span className={`text-[12px] font-medium transition-colors ${isIntervalEnabled ? 'text-gray-300' : 'text-gray-500 group-hover:text-gray-400'}`}>Interval</span>
-                            </label>
-
-                            {isIntervalEnabled && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="flex flex-col">
-                                        <label className="text-gray-500 text-[11px] mb-2 pl-1 font-medium">Interval</label>
-                                        <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full">
-                                            <input
-                                                type="text"
-                                                value={recurrenceInterval}
-                                                onChange={(e) => setRecurrenceInterval(e.target.value)}
-                                                className="bg-transparent text-gray-300 text-[12px] outline-none w-full"
-                                            />
-                                        </div>
+                                        <option value="daily" className="bg-[#2d3745]">Daily</option>
+                                        <option value="weekly" className="bg-[#2d3745]">Weekly</option>
+                                        <option value="monthly" className="bg-[#2d3745]">Monthly</option>
+                                    </select>
+                                    <div className="pointer-events-none absolute right-2 text-gray-400">
+                                        <ChevronDownIcon />
                                     </div>
-                                    <div className="flex flex-col">
-                                        <label className="text-gray-500 text-[11px] mb-2 pl-1 font-medium">End Time</label>
-                                        <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-gray-400 transition-colors w-full relative">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500 mr-2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                                            <input
-                                                type="time"
-                                                defaultValue="14:00"
-                                                className="bg-transparent text-gray-300 text-[12px] outline-none w-full"
-                                                style={{ colorScheme: 'dark' }}
-                                            />
-                                        </div>
+                                </div>
+                            </div>
+                            {recurrentType !== 'daily' && (
+                                <div className="flex flex-col">
+                                    <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Start Time</label>
+                                    <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
+                                        <input
+                                            type="time"
+                                            className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                            style={{ colorScheme: 'dark' }}
+                                            value={scheduleTime}
+                                            onChange={(e) => setScheduleTime(e.target.value)}
+                                        />
                                     </div>
                                 </div>
                             )}
                         </div>
+
+                        {recurrentType === 'daily' && (
+                            <>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-gray-400 text-[11px] pl-1 font-medium">Start Time</label>
+                                    <button
+                                        type="button"
+                                        onClick={addDailyTime}
+                                        className="text-[11px] text-[#ea580c] font-semibold hover:underline"
+                                    >
+                                        + Add Time
+                                    </button>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    {dailyRepeatTimes.map((time, index) => (
+                                        <div key={`${index}-${time}`} className="flex items-center gap-2">
+                                            <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 flex-1">
+                                                <input
+                                                    type="time"
+                                                    className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                                    style={{ colorScheme: 'dark' }}
+                                                    value={time}
+                                                    onChange={(e) => updateDailyTime(index, e.target.value)}
+                                                />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeDailyTime(index)}
+                                                className="h-[38px] px-3 bg-[#2d3745] border border-[#3b4452] rounded text-gray-300 hover:text-white disabled:opacity-50"
+                                                disabled={dailyRepeatTimes.length <= 1}
+                                            >
+                                                -
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex flex-col">
+                                    <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">End Date</label>
+                                    <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
+                                        <input
+                                            type="date"
+                                            className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                            style={{ colorScheme: 'dark' }}
+                                            value={dailyEndDate}
+                                            onChange={(e) => setDailyEndDate(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {recurrentType === 'weekly' && (
+                            <>
+                                <div className="grid grid-cols-7 rounded-[6px] overflow-hidden border border-[#3b4452]">
+                                    {days.map((day, idx) => (
+                                        <button
+                                            key={day}
+                                            type="button"
+                                            onClick={() => toggleSelection(setSelectedDays, idx)}
+                                            className={`py-[7px] text-[10px] font-bold tracking-wide transition-colors ${selectedDays.includes(idx)
+                                                ? 'bg-[#ea580c] text-white'
+                                                : 'bg-[#2d3745] text-gray-400 hover:bg-[#3b4452] hover:text-gray-200'
+                                                } ${idx !== 6 ? 'border-r border-[#3b4452]' : ''}`}
+                                        >
+                                            {day}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex flex-col">
+                                        <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Start Date</label>
+                                        <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
+                                            <input
+                                                type="date"
+                                                className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                                style={{ colorScheme: 'dark' }}
+                                                value={scheduleDate}
+                                                onChange={(e) => setScheduleDate(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Ends after (weeks)</label>
+                                        <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={recurrenceInterval}
+                                                onChange={(e) => setRecurrenceInterval(e.target.value)}
+                                                className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {recurrentType === 'monthly' && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex flex-col">
+                                    <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Select Date</label>
+                                    <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="31"
+                                            value={monthlyDay}
+                                            onChange={(e) => setMonthlyDay(e.target.value)}
+                                            className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex flex-col">
+                                    <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Ends after (months)</label>
+                                    <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={recurrenceInterval}
+                                            onChange={(e) => setRecurrenceInterval(e.target.value)}
+                                            className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -335,11 +392,10 @@ export default function MissionDetailPanel({
                 <button
                     onClick={handleSubmit}
                     disabled={isSubmitting || waypointsCount === 0}
-                    className={`w-full h-[44px] rounded-[4px] text-white text-[14px] font-bold tracking-wide shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
-                        isSubmitting || waypointsCount === 0
-                            ? 'bg-gray-600 cursor-not-allowed opacity-60'
-                            : 'bg-gradient-to-b from-[#ea580c] to-[#9c3804] hover:brightness-110'
-                    }`}
+                    className={`w-full h-[44px] rounded-[4px] text-white text-[14px] font-bold tracking-wide shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${isSubmitting || waypointsCount === 0
+                        ? 'bg-gray-600 cursor-not-allowed opacity-60'
+                        : 'bg-gradient-to-b from-[#ea580c] to-[#9c3804] hover:brightness-110'
+                        }`}
                 >
                     {isSubmitting ? (
                         <>
