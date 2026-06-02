@@ -19,10 +19,10 @@ const dockIcon = new L.DivIcon({
     iconAnchor: [12, 12]
 });
 
-const droneIcon = new L.DivIcon({
+const createDroneIcon = (heading) => new L.DivIcon({
     className: 'custom-drone-icon',
     html: `
-        <img src="/src/assets/ic_drone.png" alt="Drone" class="w-24 h-24 object-contain" />
+        <img src="/src/assets/ic_drone.png" alt="Drone" class="w-24 h-24 object-contain" style="transform: rotate(${heading || 0}deg);" />
     `,
     iconSize: [96, 96],
     iconAnchor: [48, 48]
@@ -145,7 +145,7 @@ function ZoomControls() {
     );
 }
 
-export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, onLaunch }) {
+export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, onLaunch, telemetry, homePosition, selectedDrone }) {
     // ROI state
     const [roiPosition, setRoiPosition] = useState(null);
 
@@ -156,6 +156,11 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
     const [previewRadius, setPreviewRadius] = useState(0);
     const [mousePos, setMousePos] = useState(null);
     const [spiralWaypoints, setSpiralWaypoints] = useState([]);
+
+    // Form input refs
+    const takeoffAltitudeRef = useRef(null);
+    const flightAltitudeRef = useRef(null);
+    const holdDurationRef = useRef(null);
 
     // Ref for the spiral center so the click handler can access latest value
     const spiralCenterRef = useRef(null);
@@ -170,6 +175,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
 
     const isSpiral = missionType === 'Spiral';
     const isROI = missionType === 'ROI';
+    const isLaunch = missionType === 'Launch';
 
     // Update interaction ref whenever dependencies change
     useEffect(() => {
@@ -188,7 +194,10 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
         // Assign click handler
         const ref = mapInteractionRef.current;
         ref.__click__ = (e) => {
-            if (isROI) {
+            if (isLaunch) {
+                // Launch mode: no map interaction
+                return;
+            } else if (isROI) {
                 setRoiPosition({ lat: e.latlng.lat, lng: e.latlng.lng });
             } else if (isSpiral) {
                 const phase = spiralPhaseRef.current;
@@ -213,16 +222,22 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                 }
             }
         };
-    }, [isROI, isSpiral]);
+    }, [isROI, isSpiral, isLaunch]);
 
     if (!isOpen) return null;
 
-    const center = [-6.200000, 106.816666]; // Jakarta coordinates
-    const dockPosition = [-6.195, 106.81];
-    const dronePosition = [-6.198, 106.805];
-    const fenceRadius = 1800; // meters — will come from drone params in the future
+    // Derive positions from telemetry/props, fall back to defaults
+    const dronePosition = telemetry?.location?.latitude != null
+        ? [telemetry.location.latitude, telemetry.location.longitude]
+        : [-6.200000, 106.816666];
+    const dockPosition = homePosition
+        ? [homePosition[0], homePosition[1]]
+        : dronePosition;
+    const fenceRadius = selectedDrone?.max_range_meter || 150;
+    const center = dockPosition;
+    const heading = telemetry?.location?.heading || 0;
 
-    const titleLabel = missionType === 'Launch' || missionType === 'ROI' ? 'ROI/Launch' : 'Spiral';
+    const titleLabel = missionType === 'Launch' ? 'Launch' : missionType === 'ROI' ? 'ROI' : 'Spiral';
 
     // === Fence validation for spiral ===
     // Spiral is out of bounds if: distance(dock, spiralCenter) + spiralRadius > fenceRadius
@@ -262,6 +277,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
 
     // Map instruction text
     const getMapInstruction = () => {
+        if (isLaunch) return 'Takeoff → Hold → Land mission';
         if (isROI) return 'Click on the map to set ROI point';
         if (isSpiral) {
             if (spiralPhase === 'settingCenter') return 'Click on the map to set spiral center';
@@ -300,22 +316,23 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                             zoomControl={false}
                             scrollWheelZoom={true}
                         >
-                            {/* Dark CartoDB Matter tile layer */}
+                            {/* Esri Satellite tile layer */}
                             <TileLayer
-                                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                                attribution="Tiles &copy; Esri"
                             />
 
                             {/* Unified Map Interaction Handler */}
                             <MapInteractionHandler onClickRef={mapInteractionRef} />
 
                             {/* Max Radius Circle */}
-                            <Circle center={dockPosition} radius={1800} pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1, dashArray: '4, 8' }} />
+                            <Circle center={dockPosition} radius={fenceRadius} pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.1, weight: 1, dashArray: '4, 8' }} />
 
                             {/* Dock Marker */}
                             <Marker position={dockPosition} icon={dockIcon} />
 
                             {/* Drone Marker */}
-                            <Marker position={dronePosition} icon={droneIcon} />
+                            <Marker position={dronePosition} icon={createDroneIcon(heading)} />
 
                             {/* === ROI Marker === */}
                             {isROI && roiPosition && (
@@ -420,11 +437,10 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                     <button
                                         onClick={handleGenerateWaypoints}
                                         disabled={isSpiralOutOfBounds}
-                                        className={`flex items-center gap-2 px-3 py-1.5 text-white text-[11px] font-medium rounded border shadow-lg transition-all ${
-                                            isSpiralOutOfBounds
+                                        className={`flex items-center gap-2 px-3 py-1.5 text-white text-[11px] font-medium rounded border shadow-lg transition-all ${isSpiralOutOfBounds
                                                 ? 'bg-gray-700/80 border-gray-600/30 cursor-not-allowed opacity-50'
                                                 : 'bg-purple-600/90 hover:bg-purple-500 border-purple-400/30 hover:shadow-purple-500/30 hover:shadow-xl'
-                                        }`}
+                                            }`}
                                     >
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -470,12 +486,28 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                 <div className="flex flex-col">
                                     <label className="text-gray-400 text-[10px] text-center mb-2 px-2 shadow-black drop-shadow-md">Takeoff Altitude (M)</label>
                                     <input
+                                        ref={takeoffAltitudeRef}
                                         type="number"
                                         className="w-[180px] h-[32px] bg-[#1a202c]/90 border border-[#2d3748] rounded px-3 text-white text-[12px] outline-none text-left focus:border-gray-400 transition-colors placeholder-gray-500"
-                                        placeholder="150"
-                                        defaultValue="150"
+                                        placeholder="15"
+                                        defaultValue="15"
                                     />
                                 </div>
+
+                                {/* Launch Mode: Hold Duration input */}
+                                {isLaunch && (
+                                    <div className="flex flex-col">
+                                        <label className="text-gray-400 text-[10px] text-center mb-2 px-2 shadow-black drop-shadow-md">Hold Duration (s)</label>
+                                        <input
+                                            ref={holdDurationRef}
+                                            type="number"
+                                            className="w-[160px] h-[32px] bg-[#1a202c]/90 border border-[#2d3748] rounded px-3 text-white text-[12px] outline-none text-left focus:border-gray-400 transition-colors placeholder-gray-500"
+                                            placeholder="30"
+                                            defaultValue="30"
+                                            min="0"
+                                        />
+                                    </div>
+                                )}
 
                                 {/* ROI Lat/Lng display */}
                                 {isROI && (
@@ -517,10 +549,11 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                         <div className="flex flex-col">
                                             <label className="text-gray-400 text-[10px] text-center mb-2 px-2 shadow-black drop-shadow-md">Flight Altitude (M)</label>
                                             <input
+                                                ref={flightAltitudeRef}
                                                 type="number"
                                                 className="w-[140px] h-[32px] bg-[#1a202c]/90 border border-[#2d3748] rounded px-3 text-white text-[12px] outline-none text-left focus:border-gray-400 transition-colors placeholder-gray-500"
-                                                placeholder="150"
-                                                defaultValue="150"
+                                                placeholder="15"
+                                                defaultValue="15"
                                             />
                                         </div>
                                         <div className="flex flex-col">
@@ -558,7 +591,19 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
 
                         {/* Orange Launch Button */}
                         <button
-                            onClick={() => onLaunch(missionType)}
+                            onClick={() => {
+                                const takeoffAlt = parseFloat(takeoffAltitudeRef.current?.value) || 15;
+                                const flightAlt = parseFloat(flightAltitudeRef.current?.value) || takeoffAlt;
+                                const holdDuration = parseFloat(holdDurationRef.current?.value) || 30;
+                                onLaunch({
+                                    type: missionType,
+                                    takeoffAltitude: takeoffAlt,
+                                    flightAltitude: flightAlt,
+                                    holdDuration: isLaunch ? holdDuration : 0,
+                                    roiPosition: isROI ? roiPosition : null,
+                                    spiralWaypoints: isSpiral ? spiralWaypoints : [],
+                                });
+                            }}
                             className="flex-1 h-[48px] rounded flex items-center justify-center transition-all hover:from-[#f97316] hover:to-[#c2410c] relative overflow-hidden"
                         >
                             <img src="/src/assets/btn_launch_dg.png" alt="Launch" />

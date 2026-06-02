@@ -100,12 +100,13 @@ export default function MissionPage() {
      */
     const buildMissionPayload = (formData) => {
         const {
-            missionName, takeoffAltitude, timeMode,
+            missionName, takeoffAltitude, takeoffHoldDuration, timeMode,
             scheduleDate, scheduleTime,
             recurrentType,
             dailyRepeatTimes, dailyStartDate, dailyEndDate,
-            selectedDays, weeklyTime, weeklyWeeks,
-            monthlyDay, monthlyMonths, monthlyTime,
+            selectedDays, weeklyRepeatTimes, weeklyWeeks,
+            selectedMonthDays, monthlyRepeatTimes, monthlyMonths,
+            roiLatitude, roiLongitude,
         } = formData;
 
         const pad = (n) => String(n).padStart(2, '0');
@@ -133,6 +134,19 @@ export default function MissionPage() {
             waypoints: waypointPayloads
         };
 
+        // Optional takeoff_hold_duration
+        const holdDur = parseFloat(takeoffHoldDuration);
+        if (!isNaN(holdDur) && holdDur >= 0) {
+            missionData.takeoff_hold_duration = holdDur;
+        }
+
+        // Optional ROI
+        const roiLat = parseFloat(roiLatitude);
+        const roiLng = parseFloat(roiLongitude);
+        if (!isNaN(roiLat) && !isNaN(roiLng)) {
+            missionData.roi = { latitude: roiLat, longitude: roiLng };
+        }
+
         if (timeMode === 'Now') {
             const now = new Date(Date.now() + 2 * 60 * 1000);
             const runAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:00${tzOffset}`;
@@ -153,17 +167,18 @@ export default function MissionPage() {
                     times: dailyRepeatTimes && dailyRepeatTimes.length > 0 ? dailyRepeatTimes : ['09:00']
                 };
             } else if (recurrentType === 'weekly') {
+                // Convert 0-indexed (Mon=0) to ISO weekday (Mon=1)
                 const weekdays = selectedDays.map(d => d + 1);
                 missionData.schedule_config = {
                     weeks: weeklyWeeks || 1,
                     weekdays: weekdays,
-                    times: weeklyTime ? [weeklyTime] : ['09:00']
+                    times: weeklyRepeatTimes && weeklyRepeatTimes.length > 0 ? weeklyRepeatTimes : ['09:00']
                 };
             } else if (recurrentType === 'monthly') {
                 missionData.schedule_config = {
                     months: monthlyMonths || 1,
-                    month_days: [monthlyDay || 1],
-                    times: monthlyTime ? [monthlyTime] : ['09:00']
+                    month_days: selectedMonthDays && selectedMonthDays.length > 0 ? selectedMonthDays : [1],
+                    times: monthlyRepeatTimes && monthlyRepeatTimes.length > 0 ? monthlyRepeatTimes : ['09:00']
                 };
             }
         }
@@ -177,15 +192,17 @@ export default function MissionPage() {
     const handleSubmitMission = async (formData) => {
         const {
             timeMode, scheduleDate, recurrentType,
-            dailyEndDate, selectedDays,
+            dailyStartDate, dailyEndDate, selectedDays, selectedMonthDays,
         } = formData;
 
         if (!selectedUavId) { setSubmitError('Please select a UAV'); return; }
         if (waypoints.length === 0) { setSubmitError('Please add at least one waypoint'); return; }
         if (timeMode === 'One time' && !scheduleDate) { setSubmitError('Please select a date for one-time schedule'); return; }
         if (timeMode === 'Recurrent') {
+            if (recurrentType === 'daily' && !dailyStartDate) { setSubmitError('Please select a start date for daily schedule'); return; }
             if (recurrentType === 'daily' && !dailyEndDate) { setSubmitError('Please select an end date for daily schedule'); return; }
             if (recurrentType === 'weekly' && (!selectedDays || selectedDays.length === 0)) { setSubmitError('Please select at least one weekday'); return; }
+            if (recurrentType === 'monthly' && (!selectedMonthDays || selectedMonthDays.length === 0)) { setSubmitError('Please select at least one day of month'); return; }
         }
 
         setIsSubmitting(true);

@@ -22,17 +22,31 @@ export default function MissionDetailPanel({
 }) {
     const [missionName, setMissionName] = useState('');
     const [takeoffAltitude, setTakeoffAltitude] = useState('');
+    const [takeoffHoldDuration, setTakeoffHoldDuration] = useState('');
     const [timeMode, setTimeMode] = useState('One time');
     const [scheduleDate, setScheduleDate] = useState('');
     const [scheduleTime, setScheduleTime] = useState('');
 
+    // ROI fields
+    const [roiLatitude, setRoiLatitude] = useState('');
+    const [roiLongitude, setRoiLongitude] = useState('');
+
     // Recurrent fields
     const [recurrentType, setRecurrentType] = useState('daily');
-    const [selectedDays, setSelectedDays] = useState([1]);
-    const [monthlyDay, setMonthlyDay] = useState(new Date().getDate());
     const [recurrenceInterval, setRecurrenceInterval] = useState('1');
-    const [dailyRepeatTimes, setDailyRepeatTimes] = useState(['09:00']);
+
+    // Daily fields
+    const [dailyStartDate, setDailyStartDate] = useState('');
     const [dailyEndDate, setDailyEndDate] = useState('');
+    const [dailyRepeatTimes, setDailyRepeatTimes] = useState(['09:00']);
+
+    // Weekly fields
+    const [selectedDays, setSelectedDays] = useState([1]);
+    const [weeklyRepeatTimes, setWeeklyRepeatTimes] = useState(['09:00']);
+
+    // Monthly fields
+    const [selectedMonthDays, setSelectedMonthDays] = useState([1]);
+    const [monthlyRepeatTimes, setMonthlyRepeatTimes] = useState(['09:00']);
 
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -40,23 +54,28 @@ export default function MissionDetailPanel({
         setter(prev => prev.includes(itemIndex) ? prev.filter(i => i !== itemIndex) : [...prev, itemIndex]);
     };
 
-    const addDailyTime = () => {
-        setDailyRepeatTimes(prev => [...prev, '09:00']);
+    // Add/remove/update time helpers (reusable across daily/weekly/monthly)
+    const addTime = (setter) => {
+        setter(prev => [...prev, '09:00']);
     };
 
-    const removeDailyTime = (index) => {
-        setDailyRepeatTimes(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
+    const removeTime = (setter, index) => {
+        setter(prev => prev.length > 1 ? prev.filter((_, i) => i !== index) : prev);
     };
 
-    const updateDailyTime = (index, value) => {
-        setDailyRepeatTimes(prev => prev.map((item, i) => (i === index ? value : item)));
+    const updateTime = (setter, index, value) => {
+        setter(prev => prev.map((item, i) => (i === index ? value : item)));
     };
 
     const handleSubmit = () => {
         onSubmit?.({
             missionName,
             takeoffAltitude,
+            takeoffHoldDuration,
             timeMode,
+            // ROI
+            roiLatitude,
+            roiLongitude,
             // One-time fields
             scheduleDate,
             scheduleTime,
@@ -64,18 +83,57 @@ export default function MissionDetailPanel({
             recurrentType,
             // Daily fields
             dailyRepeatTimes: dailyRepeatTimes.filter(Boolean),
-            dailyStartDate: scheduleDate,
+            dailyStartDate,
             dailyEndDate,
             // Weekly fields
             selectedDays,
-            weeklyTime: scheduleTime,
+            weeklyRepeatTimes: weeklyRepeatTimes.filter(Boolean),
             weeklyWeeks: parseInt(recurrenceInterval, 10) || 1,
             // Monthly fields
-            monthlyDay: parseInt(monthlyDay, 10) || 1,
+            selectedMonthDays,
+            monthlyRepeatTimes: monthlyRepeatTimes.filter(Boolean),
             monthlyMonths: parseInt(recurrenceInterval, 10) || 1,
-            monthlyTime: scheduleTime,
         });
     };
+
+    // Reusable time-list component
+    const renderTimeList = (times, setTimes, label = 'Start Time') => (
+        <>
+            <div className="flex items-center justify-between">
+                <label className="text-gray-400 text-[11px] pl-1 font-medium">{label}</label>
+                <button
+                    type="button"
+                    onClick={() => addTime(setTimes)}
+                    className="text-[11px] text-[#ea580c] font-semibold hover:underline"
+                >
+                    + Add Time
+                </button>
+            </div>
+            <div className="flex flex-col gap-2">
+                {times.map((time, index) => (
+                    <div key={`${index}-${time}`} className="flex items-center gap-2">
+                        <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 flex-1">
+                            <input
+                                type="time"
+                                className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                style={{ colorScheme: 'dark' }}
+                                value={time}
+                                onChange={(e) => updateTime(setTimes, index, e.target.value)}
+                            />
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => removeTime(setTimes, index)}
+                            className="h-[38px] px-3 bg-[#2d3745] border border-[#3b4452] rounded text-gray-300 hover:text-white disabled:opacity-50"
+                            disabled={times.length <= 1}
+                        >
+                            -
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </>
+    );
 
     return (
         <div className="w-auto h-full p-5 flex flex-col select-none bg-[#242c38] rounded-tl-lg border border-[#3b4452] shadow-2xl overflow-y-auto no-scrollbar">
@@ -181,6 +239,45 @@ export default function MissionDetailPanel({
                     </div>
                 </div>
 
+                {/* Takeoff Hold Duration + ROI row */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col">
+                        <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Hold Duration (s) <span className="text-gray-500">optional</span></label>
+                        <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 focus-within:border-gray-400 transition-colors">
+                            <input
+                                type="number"
+                                className="bg-transparent text-gray-100 text-[13px] outline-none w-full"
+                                placeholder="0"
+                                min="0"
+                                value={takeoffHoldDuration}
+                                onChange={(e) => setTakeoffHoldDuration(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">ROI <span className="text-gray-500">lat, lng</span></label>
+                        <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-1 gap-1 focus-within:border-gray-400 transition-colors">
+                            <input
+                                type="number"
+                                step="any"
+                                className="bg-transparent text-gray-100 text-[12px] outline-none w-1/2 px-2"
+                                placeholder="Lat"
+                                value={roiLatitude}
+                                onChange={(e) => setRoiLatitude(e.target.value)}
+                            />
+                            <div className="w-px h-5 bg-[#3b4452]"></div>
+                            <input
+                                type="number"
+                                step="any"
+                                className="bg-transparent text-gray-100 text-[12px] outline-none w-1/2 px-2"
+                                placeholder="Lng"
+                                value={roiLongitude}
+                                onChange={(e) => setRoiLongitude(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 {/* One-time fields */}
                 {timeMode === 'One time' && (
                     <div className="grid grid-cols-2 gap-4">
@@ -214,7 +311,7 @@ export default function MissionDetailPanel({
                 {/* Recurrent Mode Fields */}
                 {timeMode === 'Recurrent' && (
                     <div className="bg-[#242c38] rounded-xl flex flex-col gap-4 w-full">
-                        <div className={`grid gap-4 ${recurrentType === 'daily' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        <div className="grid grid-cols-1 gap-4">
                             <div className="flex flex-col">
                                 <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Type</label>
                                 <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 relative cursor-pointer hover:border-gray-400 transition-colors">
@@ -232,67 +329,35 @@ export default function MissionDetailPanel({
                                     </div>
                                 </div>
                             </div>
-                            {recurrentType !== 'daily' && (
-                                <div className="flex flex-col">
-                                    <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Start Time</label>
-                                    <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
-                                        <input
-                                            type="time"
-                                            className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
-                                            style={{ colorScheme: 'dark' }}
-                                            value={scheduleTime}
-                                            onChange={(e) => setScheduleTime(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {recurrentType === 'daily' && (
                             <>
-                                <div className="flex items-center justify-between">
-                                    <label className="text-gray-400 text-[11px] pl-1 font-medium">Start Time</label>
-                                    <button
-                                        type="button"
-                                        onClick={addDailyTime}
-                                        className="text-[11px] text-[#ea580c] font-semibold hover:underline"
-                                    >
-                                        + Add Time
-                                    </button>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    {dailyRepeatTimes.map((time, index) => (
-                                        <div key={`${index}-${time}`} className="flex items-center gap-2">
-                                            <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 flex-1">
-                                                <input
-                                                    type="time"
-                                                    className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
-                                                    style={{ colorScheme: 'dark' }}
-                                                    value={time}
-                                                    onChange={(e) => updateDailyTime(index, e.target.value)}
-                                                />
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => removeDailyTime(index)}
-                                                className="h-[38px] px-3 bg-[#2d3745] border border-[#3b4452] rounded text-gray-300 hover:text-white disabled:opacity-50"
-                                                disabled={dailyRepeatTimes.length <= 1}
-                                            >
-                                                -
-                                            </button>
+                                {renderTimeList(dailyRepeatTimes, setDailyRepeatTimes)}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex flex-col">
+                                        <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Start Date</label>
+                                        <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
+                                            <input
+                                                type="date"
+                                                className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                                style={{ colorScheme: 'dark' }}
+                                                value={dailyStartDate}
+                                                onChange={(e) => setDailyStartDate(e.target.value)}
+                                            />
                                         </div>
-                                    ))}
-                                </div>
-                                <div className="flex flex-col">
-                                    <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">End Date</label>
-                                    <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
-                                        <input
-                                            type="date"
-                                            className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
-                                            style={{ colorScheme: 'dark' }}
-                                            value={dailyEndDate}
-                                            onChange={(e) => setDailyEndDate(e.target.value)}
-                                        />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">End Date</label>
+                                        <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
+                                            <input
+                                                type="date"
+                                                className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                                style={{ colorScheme: 'dark' }}
+                                                value={dailyEndDate}
+                                                onChange={(e) => setDailyEndDate(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </>
@@ -315,50 +380,43 @@ export default function MissionDetailPanel({
                                         </button>
                                     ))}
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="flex flex-col">
-                                        <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Start Date</label>
-                                        <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
-                                            <input
-                                                type="date"
-                                                className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
-                                                style={{ colorScheme: 'dark' }}
-                                                value={scheduleDate}
-                                                onChange={(e) => setScheduleDate(e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Ends after (weeks)</label>
-                                        <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                value={recurrenceInterval}
-                                                onChange={(e) => setRecurrenceInterval(e.target.value)}
-                                                className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
-                                            />
-                                        </div>
+                                {renderTimeList(weeklyRepeatTimes, setWeeklyRepeatTimes)}
+                                <div className="flex flex-col">
+                                    <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Ends after (weeks)</label>
+                                    <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={recurrenceInterval}
+                                            onChange={(e) => setRecurrenceInterval(e.target.value)}
+                                            className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
+                                        />
                                     </div>
                                 </div>
                             </>
                         )}
 
                         {recurrentType === 'monthly' && (
-                            <div className="grid grid-cols-2 gap-4">
+                            <>
                                 <div className="flex flex-col">
-                                    <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Select Date</label>
-                                    <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            max="31"
-                                            value={monthlyDay}
-                                            onChange={(e) => setMonthlyDay(e.target.value)}
-                                            className="bg-transparent text-gray-100 text-[12px] outline-none w-full"
-                                        />
+                                    <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Select Days of Month</label>
+                                    <div className="grid grid-cols-7 gap-1">
+                                        {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                                            <button
+                                                key={day}
+                                                type="button"
+                                                onClick={() => toggleSelection(setSelectedMonthDays, day)}
+                                                className={`py-[5px] text-[10px] font-bold rounded transition-colors ${selectedMonthDays.includes(day)
+                                                    ? 'bg-[#ea580c] text-white'
+                                                    : 'bg-[#2d3745] text-gray-400 hover:bg-[#3b4452] hover:text-gray-200'
+                                                    } border border-[#3b4452]`}
+                                            >
+                                                {day}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
+                                {renderTimeList(monthlyRepeatTimes, setMonthlyRepeatTimes)}
                                 <div className="flex flex-col">
                                     <label className="text-gray-400 text-[11px] mb-2 pl-1 font-medium">Ends after (months)</label>
                                     <div className="h-[38px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3">
@@ -371,7 +429,7 @@ export default function MissionDetailPanel({
                                         />
                                     </div>
                                 </div>
-                            </div>
+                            </>
                         )}
                     </div>
                 )}
