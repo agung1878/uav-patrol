@@ -8,7 +8,7 @@ import QuickLaunchDialog from '../components/QuickLaunchDialog';
 import QuickLaunchDialogForm from '../components/QuickLaunchDialogForm';
 import { uavService, missionService } from '../../../services/api';
 import useTelemetry from '../../../shared/hooks/useTelemetry';
-import useStreamManager from '../../../shared/hooks/useStreamManager';
+import useDetectionStream from '../../../shared/hooks/useDetectionStream';
 
 export default function DashboardPage() {
     const [isLaunchDialogOpen, setIsLaunchDialogOpen] = useState(false);
@@ -95,7 +95,7 @@ export default function DashboardPage() {
     }, [selectedDrone?.id]);
 
     // Stream manager — watches vehicle_state and auto-starts/stops stream + WebRTC
-    const { videoStream, isStreaming, isConnecting, streamError } = useStreamManager(selectedDrone?.id, selectedTelemetry);
+    const { videoStream, isStreaming, isConnecting, streamError } = useDetectionStream();
 
     // Heading for compass widget
     const droneHeading = selectedTelemetry?.location?.heading || 0;

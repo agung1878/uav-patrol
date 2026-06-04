@@ -2,6 +2,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://api-xflight.ku
 export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://api-xflight.kumalabs.tech';
 export const STREAM_API_URL = import.meta.env.VITE_STREAM_API_URL || 'http://172.15.1.15:8000';
 export const WHEP_URL = import.meta.env.VITE_WHEP_URL || 'http://172.15.1.15:8889/stream/cam2/whep';
+export const DETECTIONS_WS_URL = import.meta.env.VITE_DETECTIONS_WS_URL || 'ws://172.15.1.15:8000/api/ws/detections';
 
 export const authService = {
     login: async (username, password) => {
@@ -204,38 +205,3 @@ export const missionService = {
     }
 };
 
-export const streamService = {
-    start: async (missionName, scheduleId, scheduleTime) => {
-        const response = await fetch(`${STREAM_API_URL}/api/start`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                mission_name: missionName,
-                schedule_id: scheduleId,
-                schedule_time: scheduleTime,
-            }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || errorData.error || 'Failed to start stream');
-        }
-
-        return response.json();
-    },
-
-    stop: async () => {
-        const response = await fetch(`${STREAM_API_URL}/api/stop`, {
-            method: 'POST',
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || errorData.error || 'Failed to stop stream');
-        }
-
-        return response.json();
-    }
-};

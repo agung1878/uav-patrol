@@ -1,14 +1,26 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function StreamButtonPanel({ onLaunchClick, isStreaming }) {
+    const navigate = useNavigate();
+
+    const handleClick = () => {
+        if (isStreaming) {
+            // Navigate to active mission page when streaming
+            navigate('/missions/active');
+        } else {
+            onLaunchClick?.();
+        }
+    };
+
     return (
         <div
-            className={`w-full h-full bg-[#1c222c] rounded-[24px] border flex flex-col items-center justify-center select-none shadow-lg transition-all ${
+            className={`w-full h-full bg-[#1c222c] rounded-[24px] border flex flex-col items-center justify-center select-none shadow-lg transition-all cursor-pointer ${
                 isStreaming
-                    ? 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.15)]'
-                    : 'border-[#2a3240] cursor-pointer hover:bg-[#252b36] active:scale-[0.98]'
+                    ? 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:bg-[#1e2a2e] active:scale-[0.98]'
+                    : 'border-[#2a3240] hover:bg-[#252b36] active:scale-[0.98]'
             }`}
-            onClick={isStreaming ? undefined : onLaunchClick}
+            onClick={handleClick}
         >
 
             <img 

@@ -1,6 +1,7 @@
 import React from 'react';
 import MainVideoFeedPanel from '../../dashboard/panels/MainVideoFeedPanel';
 import MapViewPanel from '../../dashboard/panels/MapViewPanel';
+import useDetectionStream from '../../../shared/hooks/useDetectionStream';
 
 // Mock components for the right sidebar and controls
 const DockCamPanel = () => (
@@ -68,6 +69,8 @@ const DPadControl = () => (
 );
 
 export default function ActiveMissionPage() {
+    const { videoStream, isStreaming, isConnecting, streamError, detections } = useDetectionStream();
+
     return (
         <div
             className="p-[28px] flex flex-col gap-[20px] w-full h-[calc(100vh-104px)] overflow-hidden"
@@ -77,7 +80,12 @@ export default function ActiveMissionPage() {
             <div className="flex-1 flex gap-[20px] min-h-0">
                 {/* Main Video Feed */}
                 <div className="flex-1 rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg bg-black relative group">
-                    <MainVideoFeedPanel />
+                    <MainVideoFeedPanel
+                        videoStream={videoStream}
+                        isStreaming={isStreaming}
+                        isConnecting={isConnecting}
+                        streamError={streamError}
+                    />
                     {/* Overlay controls for video */}
                     <div className="absolute top-4 left-4 flex gap-2 z-10">
                         <div className="bg-[#1f2937]/80 rounded-md p-1 border border-gray-600 flex text-[10px] font-bold text-gray-300">
@@ -85,6 +93,16 @@ export default function ActiveMissionPage() {
                             <span className="px-3 py-1 cursor-pointer hover:text-white transition-colors">Nightvision</span>
                         </div>
                     </div>
+                    {/* Mission info overlay */}
+                    {detections.mission_name && (
+                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-black/60 border border-[#2a3240] rounded-lg px-4 py-2 flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                <span className="text-white text-[12px] font-bold">{detections.mission_name}</span>
+                            </div>
+                            <span className="text-gray-400 text-[10px]">ID: {detections.mission_id}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Sidebar: Dock Cam + Weather */}
@@ -167,15 +185,25 @@ export default function ActiveMissionPage() {
                                 </div>
                             </div>
 
-                            {/* Stats */}
+                            {/* Stats — live from detections WS */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-[#111827] border border-[#2a3240] rounded-[10px] flex flex-col items-center justify-center p-2.5">
+                                <div className="bg-[#111827] border border-[#2a3240] rounded-[10px] flex flex-col items-center justify-center p-2.5 relative overflow-hidden">
                                     <span className="text-[14px] font-medium text-white mb-0.5">People</span>
-                                    <span className="text-[20px] font-bold text-gray-400 leading-none">32</span>
+                                    <span className={`text-[20px] font-bold leading-none transition-all duration-300 ${detections.person_count > 0 ? 'text-orange-400' : 'text-gray-400'}`}>
+                                        {detections.person_count}
+                                    </span>
+                                    {detections.person_count > 0 && (
+                                        <div className="absolute inset-0 rounded-[10px] border border-orange-500/30 shadow-[inset_0_0_12px_rgba(249,115,22,0.15)] pointer-events-none"></div>
+                                    )}
                                 </div>
-                                <div className="bg-[#111827] border border-[#2a3240] rounded-[10px] flex flex-col items-center justify-center p-2.5">
+                                <div className="bg-[#111827] border border-[#2a3240] rounded-[10px] flex flex-col items-center justify-center p-2.5 relative overflow-hidden">
                                     <span className="text-[14px] font-medium text-white mb-0.5">Vehicle</span>
-                                    <span className="text-[20px] font-bold text-gray-400 leading-none">32</span>
+                                    <span className={`text-[20px] font-bold leading-none transition-all duration-300 ${detections.vehicle_count > 0 ? 'text-blue-400' : 'text-gray-400'}`}>
+                                        {detections.vehicle_count}
+                                    </span>
+                                    {detections.vehicle_count > 0 && (
+                                        <div className="absolute inset-0 rounded-[10px] border border-blue-500/30 shadow-[inset_0_0_12px_rgba(59,130,246,0.15)] pointer-events-none"></div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -188,4 +216,3 @@ export default function ActiveMissionPage() {
         </div>
     );
 }
-
