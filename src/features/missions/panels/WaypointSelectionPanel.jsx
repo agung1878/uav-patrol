@@ -6,7 +6,7 @@ export default function WaypointSelectionPanel({
     onWaypointDataChange,
     onCancel
 }) {
-    const getPointData = (id) => waypointsData[id] || { altitude: 15, action: 'hold', action_duration: 5 };
+    const getPointData = (id) => waypointsData[id] || { altitude: 15, action: 'Take Picture', action_duration: 5 };
 
     return (
         <div className="w-full h-full bg-[#1c222c] p-5 flex flex-col select-none">
@@ -73,7 +73,6 @@ export default function WaypointSelectionPanel({
                                                 value={data.action}
                                                 onChange={(e) => onWaypointDataChange(wp.id, 'action', e.target.value)}
                                             >
-                                                <option value="hold" className="bg-[#1c222c]">Hold</option>
                                                 <option value="Take Picture" className="bg-[#1c222c]">Take Photo</option>
                                                 <option value="Record Video" className="bg-[#1c222c]">Video Record</option>
 

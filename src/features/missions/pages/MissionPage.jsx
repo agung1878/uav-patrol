@@ -79,7 +79,7 @@ export default function MissionPage() {
     const handleWaypointDataChange = (id, field, value) => {
         setWaypointsData(prev => ({
             ...prev,
-            [id]: { ...(prev[id] || { altitude: 150, action: 'hold', action_duration: 5 }), [field]: value }
+            [id]: { ...(prev[id] || { altitude: 15, action: 'hold', action_duration: 5 }), [field]: value }
         }));
     };
 
@@ -382,6 +382,7 @@ export default function MissionPage() {
             {showConflictDialog && (
                 <ConflictDialog
                     conflictData={conflictData}
+                    scheduleType={pendingMissionData.current?.schedule_type}
                     onConfirm={handleConflictConfirm}
                     onCancel={handleConflictCancel}
                     isSubmitting={isSubmitting}

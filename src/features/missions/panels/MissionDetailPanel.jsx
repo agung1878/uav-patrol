@@ -240,7 +240,7 @@ export default function MissionDetailPanel({
                 </div>
 
                 {/* Takeoff Hold Duration + ROI row */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 hidden">
                     <div className="flex flex-col">
                         <label className="text-gray-400 text-[11px] mb-2 pl-1 shadow-black drop-shadow-sm font-medium">Hold Duration (s) <span className="text-gray-500">optional</span></label>
                         <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-4 focus-within:border-gray-400 transition-colors">

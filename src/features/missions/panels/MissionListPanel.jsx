@@ -12,29 +12,29 @@ export default function MissionListPanel({ onAddMission, onSelectMission }) {
         const fetchMissions = async () => {
             try {
                 setLoading(true);
-                const data = await missionService.getMissions(1, 50);
+                const data = await missionService.getMissionRuns(1, 50, 'today');
 
                 // Format missions for the table
                 const formattedMissions = (data.items || []).map(m => {
-                    const scheduleDate = new Date(m.schedule);
-                    const formattedDate = scheduleDate.toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                    });
-                    const formattedTime = scheduleDate.toLocaleTimeString('en-GB', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        hour12: false
-                    });
+
+                    const formatDt = (dateString) => {
+                        if (!dateString) return '';
+                        try {
+                            const d = new Date(dateString);
+                            return `${d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}\n${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}`;
+                        } catch (e) {
+                            return dateString;
+                        }
+                    };
 
                     return {
-                        id: m.id,
-                        date: `${formattedDate}\n${formattedTime}`,
+                        id: m.mission_id,
+                        runAt: m.run_at,
+                        createdDate: formatDt(m.mission_created_at),
+                        runDate: formatDt(m.run_at),
                         name: m.mission_name,
-                        wps: m.waypoint_count,
                         status: m.status,
+                        scheduleType: (m.schedule_type || '').replace('_', ' '),
                         active: m.status === 'In Progress'
                     };
                 });
@@ -78,46 +78,55 @@ export default function MissionListPanel({ onAddMission, onSelectMission }) {
                 </button>
             </div>
 
-            {/* Table Header */}
-            <div className="grid grid-cols-[1.2fr_2fr_1fr_1.2fr] text-[10px] font-semibold text-gray-400 border-b border-[#2a3240] pb-2 mb-2 uppercase tracking-wider">
-                <div className="text-left">Date</div>
-                <div className="text-left">Mission</div>
-                <div className="text-center">Waypoints</div>
-                <div className="text-right pr-2">Status</div>
-            </div>
+            {/* Horizontal Scroll Wrapper */}
+            <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar">
+                <div className="min-w-[600px] h-full flex flex-col">
+                    {/* Table Header */}
+                    <div className="grid grid-cols-[1.5fr_2fr_1fr_1.5fr_1.5fr] gap-2 text-[10px] font-bold text-gray-500 border-b border-[#2a3240] pb-3 mb-2 uppercase tracking-widest px-2">
+                        <div className="text-left">Created Date</div>
+                        <div className="text-left">Mission Name</div>
+                        <div className="text-center">Status</div>
+                        <div className="text-left">Run At</div>
+                        <div className="text-right pr-2">Type</div>
+                    </div>
 
-            {/* Table Body */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-1 custom-scrollbar">
-                {loading ? (
-                    <div className="flex justify-center items-center h-20 text-gray-400 text-xs">
-                        Loading missions...
+                    {/* Table Body */}
+                    <div className="flex-1 overflow-y-auto pr-1 space-y-1 custom-scrollbar pb-2">
+                        {loading ? (
+                            <div className="flex justify-center items-center h-20 text-gray-400 text-xs">
+                                Loading missions...
+                            </div>
+                        ) : missions.length === 0 ? (
+                            <div className="flex justify-center items-center h-20 text-gray-500 text-xs italic">
+                                No missions found
+                            </div>
+                        ) : (
+                            missions.map((mission) => (
+                                <div
+                                    key={mission.id + '_' + mission.runAt}
+                                    className={`grid grid-cols-[1.5fr_2fr_1fr_1.5fr_1.5fr] gap-2 items-center text-xs py-2.5 px-2 rounded-lg transition-all cursor-pointer ${mission.active ? 'bg-[#3b82f6]/10 border border-[#3b82f6]/30' : 'hover:bg-[#202834]'}`}
+                                    onClick={() => handleRowClick(mission)}
+                                >
+                                    <div className="text-gray-400 leading-relaxed whitespace-pre-line text-[10px] text-left">
+                                        {mission.createdDate}
+                                    </div>
+                                    <div className={`font-semibold text-left ${mission.active ? 'text-[#3b82f6]' : 'text-gray-100'} truncate`}>
+                                        {mission.name}
+                                    </div>
+                                    <div className={`text-[11px] text-center font-medium ${mission.status === 'Skipped' || mission.status === 'Failed' ? 'text-red-400' : 'text-gray-300'}`}>
+                                        {mission.status}
+                                    </div>
+                                    <div className="text-gray-400 leading-relaxed whitespace-pre-line text-[10px] text-left">
+                                        {mission.runDate}
+                                    </div>
+                                    <div className="text-gray-500 text-[10px] uppercase font-bold text-right pr-2 tracking-wider">
+                                        {mission.scheduleType}
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
-                ) : missions.length === 0 ? (
-                    <div className="flex justify-center items-center h-20 text-gray-500 text-xs italic">
-                        No missions found
-                    </div>
-                ) : (
-                    missions.map((mission) => (
-                        <div
-                            key={mission.id}
-                            className={`grid grid-cols-[1.2fr_2fr_1fr_1.2fr] items-center text-xs py-2 px-1 rounded transition-colors cursor-pointer ${mission.active ? 'bg-[#202834]' : 'hover:bg-[#202834]/50'}`}
-                            onClick={() => handleRowClick(mission)}
-                        >
-                            <div className="text-gray-300 leading-tight whitespace-pre-line text-[10px] text-left">
-                                {mission.date}
-                            </div>
-                            <div className={`text-[11px] font-medium text-left ${mission.active ? 'text-[#3b82f6]' : 'text-gray-200'}`}>
-                                {mission.name}
-                            </div>
-                            <div className="text-gray-300 text-[11px] text-center">
-                                {mission.wps}
-                            </div>
-                            <div className="text-gray-300 text-[11px] text-right pr-2">
-                                {mission.status}
-                            </div>
-                        </div>
-                    ))
-                )}
+                </div>
             </div>
         </div>
     );

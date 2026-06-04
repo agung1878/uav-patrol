@@ -8,6 +8,7 @@ import QuickLaunchDialog from '../components/QuickLaunchDialog';
 import QuickLaunchDialogForm from '../components/QuickLaunchDialogForm';
 import { uavService, missionService } from '../../../services/api';
 import useTelemetry from '../../../shared/hooks/useTelemetry';
+import useStreamManager from '../../../shared/hooks/useStreamManager';
 
 export default function DashboardPage() {
     const [isLaunchDialogOpen, setIsLaunchDialogOpen] = useState(false);
@@ -66,21 +67,25 @@ export default function DashboardPage() {
 
     // Fetch active mission waypoints for the selected drone
     const [missionWaypoints, setMissionWaypoints] = useState(null);
+    const [activeMission, setActiveMission] = useState(null);
     useEffect(() => {
         if (!selectedDrone) return;
         const fetchActiveMission = async () => {
             try {
                 const data = await missionService.getMissions(1, 50, selectedDrone.id);
-                const activeMission = data?.items?.find(m => m.status === 'In Progress');
-                if (activeMission) {
-                    const detail = await missionService.getMissionDetail(activeMission.id);
+                const found = data?.items?.find(m => m.status === 'In Progress');
+                if (found) {
+                    const detail = await missionService.getMissionDetail(found.id);
                     setMissionWaypoints(detail?.waypoints || null);
+                    setActiveMission(found);
                 } else {
                     setMissionWaypoints(null);
+                    setActiveMission(null);
                 }
             } catch (err) {
                 console.error('[Dashboard] Failed to fetch mission waypoints:', err);
                 setMissionWaypoints(null);
+                setActiveMission(null);
             }
         };
         fetchActiveMission();
@@ -88,6 +93,12 @@ export default function DashboardPage() {
         const interval = setInterval(fetchActiveMission, 30000);
         return () => clearInterval(interval);
     }, [selectedDrone?.id]);
+
+    // Stream manager — watches vehicle_state and auto-starts/stops stream + WebRTC
+    const { videoStream, isStreaming, isConnecting, streamError } = useStreamManager(selectedDrone?.id, selectedTelemetry);
+
+    // Heading for compass widget
+    const droneHeading = selectedTelemetry?.location?.heading || 0;
 
     return (
         <>
@@ -99,7 +110,13 @@ export default function DashboardPage() {
             <div className="flex-1 flex flex-col gap-[28px] min-w-0">
                 {/* Video Frame */}
                 <div className="flex-1 rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg min-h-0">
-                    <MainVideoFeedPanel />
+                    <MainVideoFeedPanel
+                        videoStream={videoStream}
+                        isStreaming={isStreaming}
+                        isConnecting={isConnecting}
+                        streamError={streamError}
+                        heading={droneHeading}
+                    />
                 </div>
                 {/* Bottom Container View */}
                 <div className="h-[240px] flex flex-row p-[14px] gap-[16px] shrink-0 bg-[#27313D] border border-[#2a3240] rounded-[24px] shadow-lg overflow-hidden">
@@ -128,7 +145,10 @@ export default function DashboardPage() {
                 </div>
                 {/* Button Stream */}
                 <div className="h-[360px] shrink-0">
-                    <StreamButtonPanel onLaunchClick={() => setIsLaunchDialogOpen(true)} />
+                    <StreamButtonPanel 
+                        onLaunchClick={() => setIsLaunchDialogOpen(true)} 
+                        isStreaming={isStreaming || isConnecting}
+                    />
                 </div>
             </div>
 
