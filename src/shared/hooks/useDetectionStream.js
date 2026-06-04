@@ -191,9 +191,13 @@ export default function useDetectionStream() {
         };
     }, [startWebRTC]);
 
-    // Connect WS on mount, cleanup on unmount
+    // Connect WS on mount (or skip entirely if dummy), cleanup on unmount
     useEffect(() => {
-        connectWS();
+        if (DUMMY_STREAM) {
+            console.log('[DetectionStream] DUMMY_STREAM is true. Skipping WS and WebRTC.');
+        } else {
+            connectWS();
+        }
 
         return () => {
             if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
