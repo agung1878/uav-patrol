@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { missionService } from '../../../services/api';
+import { missionService, recordingService } from '../../../services/api';
 
 // Fix Leaflet's default icon path issues
 delete L.Icon.Default.prototype._getIconUrl;
@@ -62,6 +62,19 @@ const formatScheduleShort = (dateString) => {
     return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
+/**
+ * Format seconds into MM:SS or HH:MM:SS
+ */
+const formatTime = (seconds) => {
+    if (!seconds || isNaN(seconds)) return '00:00';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    const pad = (n) => String(n).padStart(2, '0');
+    if (h > 0) return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    return `${pad(m)}:${pad(s)}`;
+};
+
 const StatusBadge = ({ status, failureReason, onShowTooltip, onHideTooltip }) => {
     const colorMap = {
         'Completed': 'text-green-400',
@@ -97,6 +110,28 @@ export default function HistoryPage() {
     const [failureTooltip, setFailureTooltip] = useState(null);
     const limit = 20;
 
+    // Recording state
+    const [recordingUrl, setRecordingUrl] = useState(null);
+    const [recordingLoading, setRecordingLoading] = useState(false);
+    const [recordingError, setRecordingError] = useState(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const videoRef = useRef(null);
+    const containerRef = useRef(null);
+
+    const toggleFullscreen = async () => {
+        if (!document.fullscreenElement) {
+            if (containerRef.current?.requestFullscreen) {
+                await containerRef.current.requestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            }
+        }
+    };
+
     useEffect(() => {
         const fetchHistory = async () => {
             try {
@@ -123,6 +158,73 @@ export default function HistoryPage() {
         };
         fetchHistory();
     }, [page]);
+
+    // Fetch recording when a mission is selected
+    useEffect(() => {
+        if (!selectedItem) {
+            setRecordingUrl(null);
+            setRecordingError(null);
+            return;
+        }
+
+        const missionId = selectedItem.mission_id || selectedItem.id;
+        if (!missionId) return;
+
+        const fetchRecording = async () => {
+            setRecordingLoading(true);
+            setRecordingUrl(null);
+            setRecordingError(null);
+            setIsPlaying(false);
+            setCurrentTime(0);
+            setDuration(0);
+            try {
+                const data = await recordingService.getMissionRecording(missionId);
+                if (data && data.recording_url) {
+                    setRecordingUrl(data.recording_url);
+                    console.log('[History] Recording found:', data.recording_url);
+                } else {
+                    setRecordingError('No recording available');
+                }
+            } catch (err) {
+                console.error('[History] Failed to fetch recording:', err);
+                setRecordingError(err.message || 'Failed to load recording');
+            } finally {
+                setRecordingLoading(false);
+            }
+        };
+        fetchRecording();
+    }, [selectedItem?.id, selectedItem?.mission_id]);
+
+    const handlePlayPause = () => {
+        if (!videoRef.current) return;
+        if (videoRef.current.paused) {
+            videoRef.current.play();
+        } else {
+            videoRef.current.pause();
+        }
+    };
+
+    const handleTimeUpdate = () => {
+        if (videoRef.current) {
+            setCurrentTime(videoRef.current.currentTime);
+        }
+    };
+
+    const handleLoadedMetadata = () => {
+        if (videoRef.current) {
+            setDuration(videoRef.current.duration);
+        }
+    };
+
+    const handleSeek = (e) => {
+        if (!videoRef.current || !duration) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const percent = Math.max(0, Math.min(1, x / rect.width));
+        videoRef.current.currentTime = percent * duration;
+    };
+
+    const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
     // Filtered items by search
     const filteredItems = searchQuery
@@ -331,30 +433,108 @@ export default function HistoryPage() {
                     )}
                 </div>
 
-                {/* Bottom: Media Player */}
-                <div className="flex-1 rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg bg-black relative group">
-                    {/* Mock Video Feed */}
-                    <div className="absolute inset-0 bg-cover bg-center opacity-80" style={{ backgroundImage: `url('/src/assets/dock_cam_placeholder.png')` }}></div>
+                {/* Bottom: Video Player */}
+                <div ref={containerRef} className="flex-1 rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg bg-black relative group">
 
-                    {/* Overlays */}
-                    <div className="absolute top-4 left-4 bg-orange-600/90 backdrop-blur-sm px-4 py-1.5 rounded-[8px] text-[12px] font-bold text-white uppercase tracking-wider border border-orange-500 shadow-md">
+                    {/* Video element */}
+                    {recordingUrl ? (
+                        <video
+                            ref={videoRef}
+                            src={recordingUrl}
+                            className="absolute inset-0 w-full h-full object-cover z-0"
+                            onTimeUpdate={handleTimeUpdate}
+                            onLoadedMetadata={handleLoadedMetadata}
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            onEnded={() => setIsPlaying(false)}
+                            playsInline
+                        />
+                    ) : (
+                        <div className="absolute inset-0 bg-cover bg-center opacity-80" style={{ backgroundImage: `url('/src/assets/dock_cam_placeholder.png')` }}></div>
+                    )}
+
+                    {/* Loading overlay */}
+                    {recordingLoading && (
+                        <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-20">
+                            <svg className="animate-spin h-8 w-8 text-orange-500 mb-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                            <span className="text-gray-300 text-[12px] font-medium">Loading recording...</span>
+                        </div>
+                    )}
+
+                    {/* Error overlay */}
+                    {recordingError && !recordingLoading && (
+                        <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-20">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="1.5" className="mb-2 opacity-60">
+                                <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18" /><line x1="7" y1="2" x2="7" y2="22" /><line x1="17" y1="2" x2="17" y2="22" /><line x1="2" y1="12" x2="22" y2="12" /><line x1="2" y1="7" x2="7" y2="7" /><line x1="2" y1="17" x2="7" y2="17" /><line x1="17" y1="17" x2="22" y2="17" /><line x1="17" y1="7" x2="22" y2="7" />
+                            </svg>
+                            <span className="text-gray-400 text-[12px]">{recordingError}</span>
+                        </div>
+                    )}
+
+                    {/* Media label */}
+                    <div className="absolute top-4 left-4 z-20 bg-orange-600/90 backdrop-blur-sm px-4 py-1.5 rounded-[8px] text-[12px] font-bold text-white uppercase tracking-wider border border-orange-500 shadow-md">
                         Media
                     </div>
 
-                    {/* Big Play Button Overlay */}
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center group-hover:bg-orange-500/80 group-hover:border-orange-400 transition-all cursor-pointer pointer-events-auto">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="white" className="translate-x-0.5"><path d="M5 3l14 9-14 9V3z" /></svg>
-                        </div>
+                    {/* Fullscreen Button */}
+                    <div className="absolute top-4 right-4 z-20">
+                        <button 
+                            onClick={toggleFullscreen}
+                            className="bg-black/50 hover:bg-black/70 border border-gray-500 px-2.5 py-1.5 rounded flex items-center justify-center transition-colors shadow-md"
+                            title="Toggle Fullscreen"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-200">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                            </svg>
+                        </button>
                     </div>
 
-                    {/* Custom Progress Bar */}
-                    <div className="absolute bottom-6 left-6 right-6 h-1 bg-[#2a3240] rounded-full overflow-visible shadow-[0_0_10px_rgba(0,0,0,0.8)]">
-                        {/* Filled Part */}
-                        <div className="absolute top-0 left-0 h-full bg-orange-500 rounded-full w-[45%]"></div>
-                        {/* Playhead */}
-                        <div className="absolute top-1/2 left-[45%] -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-[0_0_4px_rgba(0,0,0,0.5)] border-2 border-orange-500"></div>
-                    </div>
+                    {/* Play/Pause Button Overlay */}
+                    {recordingUrl && !recordingLoading && (
+                        <div className="absolute inset-0 flex items-center justify-center z-10" onClick={handlePlayPause}>
+                            {!isPlaying && (
+                                <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center hover:bg-orange-500/80 hover:border-orange-400 transition-all cursor-pointer">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white" className="translate-x-0.5"><path d="M5 3l14 9-14 9V3z" /></svg>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* No recording placeholder play button */}
+                    {!recordingUrl && !recordingLoading && !recordingError && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="white" className="translate-x-0.5 opacity-40"><path d="M5 3l14 9-14 9V3z" /></svg>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Progress Bar */}
+                    {recordingUrl && (
+                        <div
+                            className="absolute bottom-6 left-6 right-6 z-20 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        >
+                            {/* Time elapsed */}
+                            <span className="text-white text-[10px] font-mono min-w-[40px] text-right">{formatTime(currentTime)}</span>
+
+                            {/* Seekable bar */}
+                            <div
+                                className="flex-1 h-1.5 bg-[#2a3240] rounded-full overflow-visible cursor-pointer relative shadow-[0_0_10px_rgba(0,0,0,0.8)]"
+                                onClick={handleSeek}
+                            >
+                                {/* Filled */}
+                                <div className="absolute top-0 left-0 h-full bg-orange-500 rounded-full transition-all duration-150" style={{ width: `${progressPercent}%` }}></div>
+                                {/* Playhead */}
+                                <div
+                                    className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-[0_0_4px_rgba(0,0,0,0.5)] border-2 border-orange-500 transition-all duration-150"
+                                    style={{ left: `${progressPercent}%` }}
+                                ></div>
+                            </div>
+
+                            {/* Time remaining */}
+                            <span className="text-white text-[10px] font-mono min-w-[40px]">{formatTime(duration)}</span>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

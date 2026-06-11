@@ -45,7 +45,20 @@ function formatElapsed(seconds) {
 
 export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnecting, streamError, heading = 0 }) {
     const videoRef = useRef(null);
+    const containerRef = useRef(null);
     const [elapsed, setElapsed] = useState(0);
+
+    const toggleFullscreen = async () => {
+        if (!document.fullscreenElement) {
+            if (containerRef.current?.requestFullscreen) {
+                await containerRef.current.requestFullscreen();
+            }
+        } else {
+            if (document.exitFullscreen) {
+                await document.exitFullscreen();
+            }
+        }
+    };
 
     // Attach the MediaStream to the <video> element when it arrives
     useEffect(() => {
@@ -65,7 +78,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
     }, [isStreaming]);
 
     return (
-        <div className="relative w-full h-full bg-[#1c222c] rounded-2xl border border-[#2a3240] overflow-hidden shadow-lg select-none">
+        <div ref={containerRef} className="relative w-full h-full bg-[#1c222c] rounded-2xl border border-[#2a3240] overflow-hidden shadow-lg select-none">
 
             {/* === Live WebRTC Video === */}
             {(isStreaming || isConnecting) && (
@@ -125,17 +138,28 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
                 </div>
             </div>
 
-            {/* === Top Right Recording Badge === */}
-            <div className="absolute top-4 right-4 z-20 bg-black/50 border border-gray-500 px-3 py-1 rounded flex items-center justify-center space-x-4">
-                <div className="flex items-center space-x-2">
-                    <div className={`w-2.5 h-2.5 rounded-full ${isStreaming ? 'bg-red-600 animate-pulse' : 'bg-gray-600'} mt-[1px]`}></div>
-                    <span className="text-gray-100 text-[11px] font-bold uppercase tracking-wider">
-                        {isStreaming ? 'Recording' : 'Standby'}
+            {/* === Top Right Recording Badge & Fullscreen === */}
+            <div className="absolute top-4 right-4 z-20 flex gap-2">
+                <div className="bg-black/50 border border-gray-500 px-3 py-1 rounded flex items-center justify-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${isStreaming ? 'bg-red-600 animate-pulse' : 'bg-gray-600'} mt-[1px]`}></div>
+                        <span className="text-gray-100 text-[11px] font-bold uppercase tracking-wider">
+                            {isStreaming ? 'Recording' : 'Standby'}
+                        </span>
+                    </div>
+                    <span className="text-gray-100 text-[11px] font-mono font-bold tracking-widest pt-[2px]">
+                        {formatElapsed(elapsed)}
                     </span>
                 </div>
-                <span className="text-gray-100 text-[11px] font-mono font-bold tracking-widest pt-[2px]">
-                    {formatElapsed(elapsed)}
-                </span>
+                <button 
+                    onClick={toggleFullscreen}
+                    className="bg-black/50 hover:bg-black/70 border border-gray-500 px-2 py-1 rounded flex items-center justify-center transition-colors"
+                    title="Toggle Fullscreen"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-200">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                    </svg>
+                </button>
             </div>
 
             {/* === Bottom Left Status === */}

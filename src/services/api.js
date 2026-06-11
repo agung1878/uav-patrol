@@ -205,3 +205,16 @@ export const missionService = {
     }
 };
 
+export const recordingService = {
+    getMissionRecording: async (idOrUuid) => {
+        const response = await fetch(`${STREAM_API_URL}/api/missions/${idOrUuid}`);
+
+        if (!response.ok) {
+            if (response.status === 404) return null;
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || errorData.error || 'Failed to fetch recording');
+        }
+
+        return response.json();
+    }
+};
