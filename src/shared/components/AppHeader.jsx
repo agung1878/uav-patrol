@@ -166,6 +166,17 @@ export default function AppHeader() {
                                 >
                                     User Management
                                 </NavLink>
+                                <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
+                                <NavLink
+                                    to="/user-management"
+                                    onClick={() => setIsSettingsOpen(false)}
+                                    className={({ isActive }) => `
+                                        px-4 py-3 text-[13px] font-semibold tracking-wide transition-colors text-left border-l-2
+                                        ${isActive ? 'text-[#ea580c] bg-[#252b36]/50 border-[#ea580c]' : 'text-gray-200 hover:bg-[#252b36] border-transparent hover:text-white'}
+                                    `}
+                                >
+                                    Docking Panel
+                                </NavLink>
                             </div>
                         )}
                     </div>

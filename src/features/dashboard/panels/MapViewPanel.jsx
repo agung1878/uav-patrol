@@ -63,7 +63,35 @@ function MapFollower({ position, shouldFollow }) {
     return null;
 }
 
-export default function MapViewPanel({ telemetry, selectedDrone, trajectory, homePosition, missionWaypoints }) {
+const TelemetryOverlay = ({ telemetry, isSmallPanel }) => {
+    const location = telemetry?.location || {};
+    const vehicleState = telemetry?.vehicle_state || {};
+    
+    const altitude = location.altitude != null ? location.altitude.toFixed(1) : '--';
+    const speed = location.ground_speed != null ? location.ground_speed.toFixed(1) : '--';
+    const flightMode = vehicleState.mode || 'UNKNOWN';
+
+    return (
+        <div className={`absolute bottom-4 right-4 z-[400] bg-[#151a25]/90 backdrop-blur border border-[#2a3240] rounded-[12px] p-3 flex gap-4 shadow-lg pointer-events-none ${isSmallPanel ? 'scale-[0.8] origin-bottom-right' : ''}`}>
+            <div className="flex flex-col items-center min-w-[40px]">
+                <span className="text-gray-400 text-[9px] uppercase tracking-wider">Alt</span>
+                <span className="text-white font-mono text-[13px] font-bold">{altitude}<span className="text-[10px] ml-0.5 text-gray-500">m</span></span>
+            </div>
+            <div className="w-[1px] bg-[#2a3240]"></div>
+            <div className="flex flex-col items-center min-w-[40px]">
+                <span className="text-gray-400 text-[9px] uppercase tracking-wider">Speed</span>
+                <span className="text-white font-mono text-[13px] font-bold">{speed}<span className="text-[10px] ml-0.5 text-gray-500">m/s</span></span>
+            </div>
+            <div className="w-[1px] bg-[#2a3240]"></div>
+            <div className="flex flex-col items-center min-w-[50px]">
+                <span className="text-gray-400 text-[9px] uppercase tracking-wider">Mode</span>
+                <span className="text-[#ea580c] font-bold text-[11px] mt-0.5 uppercase tracking-wide truncate max-w-[80px]">{flightMode}</span>
+            </div>
+        </div>
+    );
+};
+
+export default function MapViewPanel({ telemetry, selectedDrone, trajectory, homePosition, missionWaypoints, isSmallPanel = false }) {
     const defaultCenter = [-6.200000, 106.816666]; // Jakarta fallback
 
     // Get drone position from telemetry
@@ -180,6 +208,8 @@ export default function MapViewPanel({ telemetry, selectedDrone, trajectory, hom
                     />
                 )}
             </MapContainer>
+            
+            <TelemetryOverlay telemetry={telemetry} isSmallPanel={isSmallPanel} />
         </div>
     );
 }

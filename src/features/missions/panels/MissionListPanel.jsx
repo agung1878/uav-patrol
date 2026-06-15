@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { missionService } from '../../../services/api';
 
-export default function MissionListPanel({ onAddMission, onSelectMission }) {
+export default function MissionListPanel({ onAddMission, onSelectMission, refreshKey = 0 }) {
     const navigate = useNavigate();
     const [missions, setMissions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ export default function MissionListPanel({ onAddMission, onSelectMission }) {
         };
 
         fetchMissions();
-    }, []);
+    }, [refreshKey]);
 
     const handleRowClick = (mission) => {
         if (mission.status === 'In Progress') {

@@ -53,7 +53,7 @@ export default function MissionPage() {
 
     // Telemetry — subscribe to all drone IDs
     const uavIds = drones.map(d => d.id);
-    const { telemetry, positionHistory, homePositions } = useTelemetry(uavIds);
+    const { telemetry, positionHistory, homePositions, missionStatusVersion } = useTelemetry(uavIds);
 
     // Get telemetry for the selected drone
     const selectedDroneObj = drones.find(d => d.id === selectedUavId) || null;
@@ -373,7 +373,7 @@ export default function MissionPage() {
                         </div>
                         {/* Mission List */}
                         <div className="flex-1 bg-[#27313D] rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg min-h-0">
-                            <MissionListPanel onAddMission={() => setIsAddingMission(true)} onSelectMission={handleSelectMission} />
+                            <MissionListPanel onAddMission={() => setIsAddingMission(true)} onSelectMission={handleSelectMission} refreshKey={missionStatusVersion} />
                         </div>
                     </>
                 )}

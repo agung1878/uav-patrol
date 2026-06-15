@@ -46,6 +46,11 @@ export default function useTelemetry(uavIds = []) {
     const [positionHistory, setPositionHistory] = useState({});
     const [homePositions, setHomePositions] = useState({});
 
+    // Track mission_status runtime_status changes
+    const lastRuntimeStatusRef = useRef({}); // { [uav_id]: string }
+    const [missionStatusVersion, setMissionStatusVersion] = useState(0);
+    const landedTimerRef = useRef(null);
+
     const wsRef = useRef(null);
     const reconnectAttempts = useRef(0);
     const reconnectTimeout = useRef(null);
@@ -161,6 +166,31 @@ export default function useTelemetry(uavIds = []) {
                         }
                     }
 
+                    // Detect mission_status runtime_status changes
+                    if (metric === 'mission_status' && payload.runtime_status) {
+                        const prevStatus = lastRuntimeStatusRef.current[uav_id];
+                        const isChanged = prevStatus !== payload.runtime_status;
+                        const isLanded = payload.runtime_status === 'Landed';
+
+                        if (isChanged || isLanded) {
+                            console.log(`[Telemetry] mission_status runtime_status for UAV ${uav_id}: ${prevStatus || 'N/A'} → ${payload.runtime_status}`);
+                            lastRuntimeStatusRef.current[uav_id] = payload.runtime_status;
+
+                            if (isLanded) {
+                                // Wait 10s before refreshing so backend can finalize
+                                if (landedTimerRef.current) clearTimeout(landedTimerRef.current);
+                                landedTimerRef.current = setTimeout(() => {
+                                    if (isMounted.current) {
+                                        console.log(`[Telemetry] Landed delay elapsed — refreshing mission-runs`);
+                                        setMissionStatusVersion(v => v + 1);
+                                    }
+                                }, 5000);
+                            } else {
+                                setMissionStatusVersion(v => v + 1);
+                            }
+                        }
+                    }
+
                     setTelemetry(prev => ({
                         ...prev,
                         [uav_id]: {
@@ -224,6 +254,7 @@ export default function useTelemetry(uavIds = []) {
         return () => {
             isMounted.current = false;
             clearTimeout(reconnectTimeout.current);
+            clearTimeout(landedTimerRef.current);
             if (wsRef.current) {
                 wsRef.current.onclose = null;
                 wsRef.current.close();
@@ -232,5 +263,5 @@ export default function useTelemetry(uavIds = []) {
         };
     }, [connect, JSON.stringify(uavIds)]);
 
-    return { telemetry, isConnected, error, positionHistory, homePositions };
+    return { telemetry, isConnected, error, positionHistory, homePositions, missionStatusVersion };
 }

@@ -8,7 +8,7 @@ const StatBox = ({ count, label }) => (
     </div>
 );
 
-export default function MissionListPanel() {
+export default function MissionListPanel({ refreshKey = 0 }) {
     const [missions, setMissions] = useState([]);
     const [stats, setStats] = useState({ total: 0, waiting: 0, completed: 0 });
     const [isLoading, setIsLoading] = useState(true);
@@ -39,7 +39,7 @@ export default function MissionListPanel() {
         };
 
         fetchMissions();
-    }, []);
+    }, [refreshKey]);
 
     const formatDate = (dateString) => {
         if (!dateString) return '';

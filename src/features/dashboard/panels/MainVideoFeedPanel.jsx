@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 
-const CompassWidget = ({ heading = 0 }) => (
-    <div className="absolute bottom-6 right-6 w-32 h-32 rounded-full bg-black/40 flex items-center justify-center">
+const CompassWidget = ({ heading = 0, isSmallPanel = false }) => (
+    <div className={`absolute bottom-6 right-6 rounded-full bg-black/40 flex items-center justify-center ${isSmallPanel ? 'w-20 h-20' : 'w-32 h-32'}`}>
         <div className="relative w-full h-full rounded-full border border-gray-400/50 flex items-center justify-center">
             {/* Compass Marks */}
             <span className="absolute top-2 text-[11px] text-gray-200 font-bold uppercase tracking-widest">N</span>
@@ -43,7 +43,7 @@ function formatElapsed(seconds) {
     return `${h}:${m}:${s}`;
 }
 
-export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnecting, streamError, heading = 0 }) {
+export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnecting, streamError, heading = 0, isSmallPanel = false }) {
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const [elapsed, setElapsed] = useState(0);
@@ -118,7 +118,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             )}
 
             {/* === Top Left Badge === */}
-            <div className="absolute top-4 left-4 z-20 bg-black/60 border border-gray-500 px-3 py-1.5 rounded uppercase flex items-center justify-center gap-2">
+            <div className={`absolute top-4 left-4 z-20 bg-black/60 border border-gray-500 px-3 py-1.5 rounded uppercase flex items-center justify-center gap-2 ${isSmallPanel ? 'scale-[0.8] origin-top-left' : ''}`}>
                 <span className="text-[#ea580c] text-[11px] font-bold tracking-widest">DRONE CAM</span>
                 {isStreaming && (
                     <div className="flex items-center gap-1.5 ml-1">
@@ -129,17 +129,17 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             </div>
 
             {/* === Top Center Badge === */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-black/50 border border-[#ea580c] px-3 py-1.5 rounded flex items-center justify-center">
+            {/* <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-black/50 border border-[#ea580c] px-3 py-1.5 rounded flex items-center justify-center ${isSmallPanel ? 'scale-[0.8] origin-top' : ''}`}>
                 <div className="flex items-center space-x-2 text-[#ea580c]">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     <span className="text-[11px] font-bold tracking-widest uppercase">ZOOM 2.3X</span>
                 </div>
-            </div>
+            </div> */}
 
             {/* === Top Right Recording Badge & Fullscreen === */}
-            <div className="absolute top-4 right-4 z-20 flex gap-2">
+            <div className={`absolute top-4 right-4 z-20 flex gap-2 ${isSmallPanel ? 'scale-[0.8] origin-top-right' : ''}`}>
                 <div className="bg-black/50 border border-gray-500 px-3 py-1 rounded flex items-center justify-center space-x-4">
                     <div className="flex items-center space-x-2">
                         <div className={`w-2.5 h-2.5 rounded-full ${isStreaming ? 'bg-red-600 animate-pulse' : 'bg-gray-600'} mt-[1px]`}></div>
@@ -151,7 +151,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
                         {formatElapsed(elapsed)}
                     </span>
                 </div>
-                <button 
+                <button
                     onClick={toggleFullscreen}
                     className="bg-black/50 hover:bg-black/70 border border-gray-500 px-2 py-1 rounded flex items-center justify-center transition-colors"
                     title="Toggle Fullscreen"
@@ -163,7 +163,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             </div>
 
             {/* === Bottom Left Status === */}
-            <div className="absolute bottom-5 left-5 z-20 flex flex-col items-start bg-black/30 px-2 py-1 rounded">
+            <div className={`absolute bottom-5 left-5 z-20 flex flex-col items-start bg-black/30 px-2 py-1 rounded ${isSmallPanel ? 'scale-[0.8] origin-bottom-left' : ''}`}>
                 <span className="text-gray-300 text-[10px] uppercase font-bold tracking-wider drop-shadow-md">Camera Status</span>
                 <span className={`text-[13px] font-semibold tracking-wide drop-shadow-md mt-0.5 ${isStreaming ? 'text-emerald-400' : isConnecting ? 'text-amber-400' : 'text-gray-400'}`}>
                     {isStreaming ? 'Live Stream' : isConnecting ? 'Connecting...' : 'Offline'}
@@ -171,7 +171,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             </div>
 
             {/* === Bottom Right Compass === */}
-            <CompassWidget heading={heading} />
+            <CompassWidget heading={heading} isSmallPanel={isSmallPanel} />
         </div>
     );
 }

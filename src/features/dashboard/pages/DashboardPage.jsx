@@ -14,6 +14,7 @@ export default function DashboardPage() {
     const [isLaunchDialogOpen, setIsLaunchDialogOpen] = useState(false);
     const [isLaunchFormOpen, setIsLaunchFormOpen] = useState(false);
     const [selectedLaunchType, setSelectedLaunchType] = useState('ROI');
+    const [isSwapped, setIsSwapped] = useState(false); // new state for swapping video and map
 
     // Toast notification state
     const [toast, setToast] = useState(null); // { type: 'success'|'error'|'warning', message: string }
@@ -58,7 +59,7 @@ export default function DashboardPage() {
 
     // Telemetry — subscribe to all drone IDs from the fetched list
     const uavIds = drones.map(d => d.id);
-    const { telemetry, isConnected: isTelemetryConnected, error: telemetryError, positionHistory, homePositions } = useTelemetry(uavIds);
+    const { telemetry, isConnected: isTelemetryConnected, error: telemetryError, positionHistory, homePositions, missionStatusVersion } = useTelemetry(uavIds);
 
     // Get telemetry for the selected drone
     const selectedTelemetry = selectedDrone ? telemetry[selectedDrone.id] : null;
@@ -108,23 +109,65 @@ export default function DashboardPage() {
         >
             {/* Column 1 */}
             <div className="flex-1 flex flex-col gap-[28px] min-w-0">
-                {/* Video Frame */}
-                <div className="flex-1 rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg min-h-0">
-                    <MainVideoFeedPanel
-                        videoStream={videoStream}
-                        isStreaming={isStreaming}
-                        isConnecting={isConnecting}
-                        streamError={streamError}
-                        heading={droneHeading}
-                    />
+                {/* Main View (Video or Map) */}
+                <div className="flex-1 rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg min-h-0 relative group">
+                    {isSwapped ? (
+                        <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} trajectory={selectedTrajectory} homePosition={selectedHome} missionWaypoints={missionWaypoints} isSmallPanel={false} />
+                    ) : (
+                        <MainVideoFeedPanel
+                            videoStream={videoStream}
+                            isStreaming={isStreaming}
+                            isConnecting={isConnecting}
+                            streamError={streamError}
+                            heading={droneHeading}
+                            isSmallPanel={false}
+                        />
+                    )}
+                    
+                    {/* Swap Button (Floating on Main View) */}
+                    <button 
+                        onClick={() => setIsSwapped(!isSwapped)}
+                        className="absolute bottom-6 left-6 z-[400] bg-black/60 hover:bg-black/80 border border-gray-500 p-2.5 rounded-xl transition-all shadow-lg opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2"
+                        title="Swap View"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
+                            <path d="M8 3L4 7l4 4" />
+                            <path d="M4 7h16" />
+                            <path d="M16 21l4-4-4-4" />
+                            <path d="M20 17H4" />
+                        </svg>
+                        <span className="text-gray-300 text-[12px] font-bold tracking-wider uppercase">Swap View</span>
+                    </button>
                 </div>
                 {/* Bottom Container View */}
                 <div className="h-[240px] flex flex-row p-[14px] gap-[16px] shrink-0 bg-[#27313D] border border-[#2a3240] rounded-[24px] shadow-lg overflow-hidden">
-                    <div className={`w-[413px] h-full shrink-0 ${(isLaunchDialogOpen || isLaunchFormOpen) ? 'invisible' : ''}`}>
-                        <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} trajectory={selectedTrajectory} homePosition={selectedHome} missionWaypoints={missionWaypoints} />
+                    <div className={`w-[413px] h-full shrink-0 group relative ${(isLaunchDialogOpen || isLaunchFormOpen) ? 'invisible' : ''}`}>
+                        {isSwapped ? (
+                            <MainVideoFeedPanel
+                                videoStream={videoStream}
+                                isStreaming={isStreaming}
+                                isConnecting={isConnecting}
+                                streamError={streamError}
+                                heading={droneHeading}
+                                isSmallPanel={true}
+                            />
+                        ) : (
+                            <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} trajectory={selectedTrajectory} homePosition={selectedHome} missionWaypoints={missionWaypoints} isSmallPanel={true} />
+                        )}
+                        
+                        {/* Swap Button (Floating on Mini View) */}
+                        <button 
+                            onClick={() => setIsSwapped(!isSwapped)}
+                            className="absolute top-3 right-3 z-[400] bg-black/60 hover:bg-black/80 border border-gray-500 p-2 rounded-lg transition-all shadow-md opacity-0 group-hover:opacity-100"
+                            title="Swap View"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
+                                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                            </svg>
+                        </button>
                     </div>
                     <div className="flex-1 h-full min-w-0">
-                        <MissionListPanel />
+                        <MissionListPanel refreshKey={missionStatusVersion} />
                     </div>
                 </div>
             </div>
