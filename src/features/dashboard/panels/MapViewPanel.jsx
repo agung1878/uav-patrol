@@ -63,33 +63,33 @@ function MapFollower({ position, shouldFollow }) {
     return null;
 }
 
-const TelemetryOverlay = ({ telemetry, isSmallPanel }) => {
-    const location = telemetry?.location || {};
-    const vehicleState = telemetry?.vehicle_state || {};
-    
-    const altitude = location.altitude != null ? location.altitude.toFixed(1) : '--';
-    const speed = location.ground_speed != null ? location.ground_speed.toFixed(1) : '--';
-    const flightMode = vehicleState.mode || 'UNKNOWN';
+// const TelemetryOverlay = ({ telemetry, isSmallPanel }) => {
+//     const location = telemetry?.location || {};
+//     const vehicleState = telemetry?.vehicle_state || {};
 
-    return (
-        <div className={`absolute bottom-4 right-4 z-[400] bg-[#151a25]/90 backdrop-blur border border-[#2a3240] rounded-[12px] p-3 flex gap-4 shadow-lg pointer-events-none ${isSmallPanel ? 'scale-[0.8] origin-bottom-right' : ''}`}>
-            <div className="flex flex-col items-center min-w-[40px]">
-                <span className="text-gray-400 text-[9px] uppercase tracking-wider">Alt</span>
-                <span className="text-white font-mono text-[13px] font-bold">{altitude}<span className="text-[10px] ml-0.5 text-gray-500">m</span></span>
-            </div>
-            <div className="w-[1px] bg-[#2a3240]"></div>
-            <div className="flex flex-col items-center min-w-[40px]">
-                <span className="text-gray-400 text-[9px] uppercase tracking-wider">Speed</span>
-                <span className="text-white font-mono text-[13px] font-bold">{speed}<span className="text-[10px] ml-0.5 text-gray-500">m/s</span></span>
-            </div>
-            <div className="w-[1px] bg-[#2a3240]"></div>
-            <div className="flex flex-col items-center min-w-[50px]">
-                <span className="text-gray-400 text-[9px] uppercase tracking-wider">Mode</span>
-                <span className="text-[#ea580c] font-bold text-[11px] mt-0.5 uppercase tracking-wide truncate max-w-[80px]">{flightMode}</span>
-            </div>
-        </div>
-    );
-};
+//     const altitude = location.altitude != null ? location.altitude.toFixed(1) : '--';
+//     const speed = location.ground_speed != null ? location.ground_speed.toFixed(1) : '--';
+//     const flightMode = vehicleState.mode || 'UNKNOWN';
+
+//     return (
+//         <div className={`absolute bottom-4 right-4 z-[400] bg-[#151a25]/90 backdrop-blur border border-[#2a3240] rounded-[12px] p-3 flex gap-4 shadow-lg pointer-events-none ${isSmallPanel ? 'scale-[0.8] origin-bottom-right' : ''}`}>
+//             <div className="flex flex-col items-center min-w-[40px]">
+//                 <span className="text-gray-400 text-[9px] uppercase tracking-wider">Alt</span>
+//                 <span className="text-white font-mono text-[13px] font-bold">{altitude}<span className="text-[10px] ml-0.5 text-gray-500">m</span></span>
+//             </div>
+//             <div className="w-[1px] bg-[#2a3240]"></div>
+//             <div className="flex flex-col items-center min-w-[40px]">
+//                 <span className="text-gray-400 text-[9px] uppercase tracking-wider">Speed</span>
+//                 <span className="text-white font-mono text-[13px] font-bold">{speed}<span className="text-[10px] ml-0.5 text-gray-500">m/s</span></span>
+//             </div>
+//             <div className="w-[1px] bg-[#2a3240]"></div>
+//             <div className="flex flex-col items-center min-w-[50px]">
+//                 <span className="text-gray-400 text-[9px] uppercase tracking-wider">Mode</span>
+//                 <span className="text-[#ea580c] font-bold text-[11px] mt-0.5 uppercase tracking-wide truncate max-w-[80px]">{flightMode}</span>
+//             </div>
+//         </div>
+//     );
+// };
 
 export default function MapViewPanel({ telemetry, selectedDrone, trajectory, homePosition, missionWaypoints, isSmallPanel = false }) {
     const defaultCenter = [-6.200000, 106.816666]; // Jakarta fallback
@@ -101,6 +101,7 @@ export default function MapViewPanel({ telemetry, selectedDrone, trajectory, hom
         ? [location.latitude, location.longitude]
         : null;
     const heading = location.heading ?? 0;
+    const flightMode = telemetry?.vehicle_state?.mode || 'UNKNOWN';
 
     // Current waypoint index from mission progress
     const currentWaypoint = telemetry?.mission_progress?.current_waypoint ?? null;
@@ -124,19 +125,14 @@ export default function MapViewPanel({ telemetry, selectedDrone, trajectory, hom
 
     return (
         <div className="relative w-full h-full bg-[#181d25] rounded-[24px] border border-[#2a3240] overflow-hidden select-none">
-            {/* Switch Button */}
-            <div className="absolute top-4 left-4 w-8 h-8 rounded-full bg-[#202834] border border-[#2a3240] flex items-center justify-center cursor-pointer hover:bg-[#2c3645] transition-colors z-[400]">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-300">
-                    <path d="M17 11V3M17 3L21 7M17 3L13 7M7 13V21M7 21L3 17M7 21L11 17" />
-                </svg>
-            </div>
 
             {/* Telemetry HUD overlay */}
             {hasLocation && (
-                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 z-[400] text-[9px] font-mono text-gray-300 flex gap-3">
+                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 z-[10000] text-[9px] font-mono text-gray-300 flex gap-3">
                     <span>ALT {Number(location.altitude ?? 0).toFixed(1)}m</span>
                     <span>SPD {Number(location.ground_speed ?? 0).toFixed(1)}m/s</span>
                     <span>HDG {Number(heading).toFixed(0)}°</span>
+                    <span>MODE {(flightMode)}</span>
                 </div>
             )}
 
@@ -211,8 +207,8 @@ export default function MapViewPanel({ telemetry, selectedDrone, trajectory, hom
                     />
                 )}
             </MapContainer>
-            
-            <TelemetryOverlay telemetry={telemetry} isSmallPanel={isSmallPanel} />
+
+            {/* <TelemetryOverlay telemetry={telemetry} isSmallPanel={isSmallPanel} /> */}
         </div>
     );
 }

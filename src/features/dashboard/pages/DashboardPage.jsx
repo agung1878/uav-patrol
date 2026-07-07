@@ -223,7 +223,7 @@ export default function DashboardPage() {
                             )}
 
                             {/* Swap Button (Floating on Mini View) */}
-                            <button
+                            {/* <button
                                 onClick={() => setIsSwapped(!isSwapped)}
                                 className="absolute top-3 right-3 z-[400] bg-black/60 hover:bg-black/80 border border-gray-500 p-2 rounded-lg transition-all shadow-md opacity-0 group-hover:opacity-100"
                                 title="Swap View"
@@ -231,7 +231,7 @@ export default function DashboardPage() {
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
                                     <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
                                 </svg>
-                            </button>
+                            </button> */}
                         </div>
                         <div className="flex-1 h-full min-w-0">
                             <MissionListPanel refreshKey={`${missionStatusVersion}-${manualRefreshCounter}`} />
@@ -344,7 +344,7 @@ export default function DashboardPage() {
 
                         try {
                             pendingMissionData.current = missionData;
-                            
+
                             // Step 1: Preview conflicts
                             const previewPayload = {
                                 mission_name: missionData.mission_name,
@@ -354,16 +354,16 @@ export default function DashboardPage() {
                                 priority: 100, // Quick launch usually has high priority
                                 window_days: 30
                             };
-                            
+
                             const preview = await missionService.previewConflicts(previewPayload);
                             console.log('[QuickLaunch] Conflict preview result:', preview);
-                            
+
                             if (preview.has_conflict) {
                                 setConflictData(preview);
                                 setShowConflictDialog(true);
                                 return;
                             }
-                            
+
                             await createMission(missionData);
                         } catch (err) {
                             console.error('[QuickLaunch] Error:', err);

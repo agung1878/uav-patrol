@@ -73,33 +73,33 @@ function MapCenterUpdater({ dronePosition, homePosition }) {
     return null;
 }
 
-const TelemetryOverlay = ({ telemetry }) => {
-    const location = telemetry?.location || {};
-    const vehicleState = telemetry?.vehicle_state || {};
+// const TelemetryOverlay = ({ telemetry }) => {
+//     const location = telemetry?.location || {};
+//     const vehicleState = telemetry?.vehicle_state || {};
 
-    const altitude = location.altitude != null ? location.altitude.toFixed(1) : '--';
-    const speed = location.ground_speed != null ? location.ground_speed.toFixed(1) : '--';
-    const flightMode = vehicleState.mode || 'UNKNOWN';
+//     const altitude = location.altitude != null ? location.altitude.toFixed(1) : '--';
+//     const speed = location.ground_speed != null ? location.ground_speed.toFixed(1) : '--';
+//     const flightMode = vehicleState.mode || 'UNKNOWN';
 
-    return (
-        <div className="absolute bottom-4 left-4 z-[400] bg-[#151a25]/90 backdrop-blur border border-[#2a3240] rounded-[12px] p-3 flex gap-4 shadow-lg pointer-events-none">
-            <div className="flex flex-col items-center min-w-[40px]">
-                <span className="text-gray-400 text-[9px] uppercase tracking-wider">Alt</span>
-                <span className="text-white font-mono text-[13px] font-bold">{altitude}<span className="text-[10px] ml-0.5 text-gray-500">m</span></span>
-            </div>
-            <div className="w-[1px] bg-[#2a3240]"></div>
-            <div className="flex flex-col items-center min-w-[40px]">
-                <span className="text-gray-400 text-[9px] uppercase tracking-wider">Speed</span>
-                <span className="text-white font-mono text-[13px] font-bold">{speed}<span className="text-[10px] ml-0.5 text-gray-500">m/s</span></span>
-            </div>
-            <div className="w-[1px] bg-[#2a3240]"></div>
-            <div className="flex flex-col items-center min-w-[50px]">
-                <span className="text-gray-400 text-[9px] uppercase tracking-wider">Mode</span>
-                <span className="text-[#ea580c] font-bold text-[11px] mt-0.5 uppercase tracking-wide truncate max-w-[80px]">{flightMode}</span>
-            </div>
-        </div>
-    );
-};
+//     return (
+//         <div className="absolute bottom-4 left-4 z-[400] bg-[#151a25]/90 backdrop-blur border border-[#2a3240] rounded-[12px] p-3 flex gap-4 shadow-lg pointer-events-none">
+//             <div className="flex flex-col items-center min-w-[40px]">
+//                 <span className="text-gray-400 text-[9px] uppercase tracking-wider">Alt</span>
+//                 <span className="text-white font-mono text-[13px] font-bold">{altitude}<span className="text-[10px] ml-0.5 text-gray-500">m</span></span>
+//             </div>
+//             <div className="w-[1px] bg-[#2a3240]"></div>
+//             <div className="flex flex-col items-center min-w-[40px]">
+//                 <span className="text-gray-400 text-[9px] uppercase tracking-wider">Speed</span>
+//                 <span className="text-white font-mono text-[13px] font-bold">{speed}<span className="text-[10px] ml-0.5 text-gray-500">m/s</span></span>
+//             </div>
+//             <div className="w-[1px] bg-[#2a3240]"></div>
+//             <div className="flex flex-col items-center min-w-[50px]">
+//                 <span className="text-gray-400 text-[9px] uppercase tracking-wider">Mode</span>
+//                 <span className="text-[#ea580c] font-bold text-[11px] mt-0.5 uppercase tracking-wide truncate max-w-[80px]">{flightMode}</span>
+//             </div>
+//         </div>
+//     );
+// };
 
 export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode = true, telemetry, trajectory, homePosition, selectedDrone, selectedMission }) {
     const defaultCenter = [-6.200000, 106.816666]; // Jakarta fallback
@@ -161,6 +161,7 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
     const hasLocation = location.latitude != null && location.longitude != null;
     const dronePosition = hasLocation ? [location.latitude, location.longitude] : null;
     const heading = location.heading ?? 0;
+    const flightMode = telemetry?.vehicle_state?.mode || 'UNKNOWN';
 
     // --- Drone Condition: live telemetry values ---
     // Battery from telemetry metric "battery"
@@ -228,6 +229,16 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
 
     return (
         <div className="relative w-full h-full bg-[#181d25]">
+
+            {hasLocation && (
+                <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 z-[10000] text-[9px] font-mono text-gray-300 flex gap-3">
+                    <span>ALT {Number(location.altitude ?? 0).toFixed(1)}m</span>
+                    <span>SPD {Number(location.ground_speed ?? 0).toFixed(1)}m/s</span>
+                    <span>HDG {Number(heading).toFixed(0)}°</span>
+                    <span>MODE {(flightMode)}</span>
+                </div>
+            )}
+
             <MapContainer
                 ref={mapRef}
                 center={mapCenter}
@@ -362,8 +373,8 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                             <div className="flex flex-col">
                                 <span className="text-gray-400 text-[10px] mb-1">Status</span>
                                 <span className={`text-xs font-bold ${selectedMission?.status === 'Completed' ? 'text-green-400' :
-                                        selectedMission?.status === 'In Progress' ? 'text-blue-400' :
-                                            selectedMission?.status === 'Waiting' ? 'text-amber-400' : 'text-white'
+                                    selectedMission?.status === 'In Progress' ? 'text-blue-400' :
+                                        selectedMission?.status === 'Waiting' ? 'text-amber-400' : 'text-white'
                                     }`}>{selectedMission?.status || '--'}</span>
                             </div>
                             <div className="flex flex-col">
@@ -510,19 +521,19 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                 </>
             )}
 
-            <TelemetryOverlay telemetry={telemetry} />
+            {/* <TelemetryOverlay telemetry={telemetry} /> */}
 
             {/* Custom Toast Notification */}
             {toast && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] animate-[slideDown_0.35s_ease-out]"
                     style={{ animation: 'slideDown 0.35s ease-out' }}>
                     <div className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border shadow-2xl backdrop-blur-md min-w-[320px] max-w-[480px] ${toast.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 shadow-emerald-900/40' :
-                            toast.type === 'error' ? 'bg-red-950/90 border-red-500/40 shadow-red-900/40' :
-                                'bg-amber-950/90 border-amber-500/40 shadow-amber-900/40'
+                        toast.type === 'error' ? 'bg-red-950/90 border-red-500/40 shadow-red-900/40' :
+                            'bg-amber-950/90 border-amber-500/40 shadow-amber-900/40'
                         }`}>
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-500/20' :
-                                toast.type === 'error' ? 'bg-red-500/20' :
-                                    'bg-amber-500/20'
+                            toast.type === 'error' ? 'bg-red-500/20' :
+                                'bg-amber-500/20'
                             }`}>
                             {toast.type === 'success' && (
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
@@ -537,8 +548,8 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
 
                         <div className="flex-1">
                             <div className={`text-[11px] font-semibold uppercase tracking-wider mb-0.5 ${toast.type === 'success' ? 'text-emerald-400' :
-                                    toast.type === 'error' ? 'text-red-400' :
-                                        'text-amber-400'
+                                toast.type === 'error' ? 'text-red-400' :
+                                    'text-amber-400'
                                 }`}>
                                 {toast.type === 'success' ? 'Success' : toast.type === 'error' ? 'Error' : 'Warning'}
                             </div>
