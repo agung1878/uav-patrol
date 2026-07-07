@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
 import useTelemetry from '../hooks/useTelemetry';
-import { uavService } from '../../services/api';
+import { uavService, authService } from '../../services/api';
 
 const SatelliteIcon = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
@@ -44,18 +45,23 @@ const BatteryVertical = ({ level = 80 }) => (
     </div>
 );
 
-import { NavLink } from 'react-router-dom';
-
 const navLinkStyles = ({ isActive }) =>
     isActive
         ? "px-5 py-[6px] border border-[#ea580c] text-[#ea580c] bg-[#1d232c] text-[11px] font-bold uppercase tracking-widest rounded-sm transition-colors"
         : "px-5 py-[6px] text-gray-100 bg-[#1d232c] text-[11px] font-bold uppercase tracking-widest rounded-sm hover:bg-[#252b36] transition-colors border border-transparent";
 
 export default function AppHeader() {
+    const navigate = useNavigate();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsRef = useRef(null);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [uavIds, setUavIds] = useState([]);
+
+    const handleLogout = async () => {
+        setIsSettingsOpen(false);
+        await authService.logout();
+        navigate('/login');
+    };
 
     // Fetch UAV on mount to get ID for telemetry subscription
     useEffect(() => {
@@ -168,7 +174,7 @@ export default function AppHeader() {
                                 </NavLink>
                                 <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
                                 <NavLink
-                                    to="/user-management"
+                                    to="/docking-panel"
                                     onClick={() => setIsSettingsOpen(false)}
                                     className={({ isActive }) => `
                                         px-4 py-3 text-[13px] font-semibold tracking-wide transition-colors text-left border-l-2
@@ -177,6 +183,13 @@ export default function AppHeader() {
                                 >
                                     Docking Panel
                                 </NavLink>
+                                <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="px-4 py-3 text-[13px] font-semibold tracking-wide transition-colors text-left text-red-400 hover:bg-[#252b36] hover:text-red-300"
+                                >
+                                    Logout
+                                </button>
                             </div>
                         )}
                     </div>

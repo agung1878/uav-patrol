@@ -39,9 +39,17 @@ const createWaypointIcon = (number) => new L.DivIcon({
 });
 
 // Component to handle map clicks for adding waypoints
-function MapClickHandler({ onAddWaypoint }) {
+function MapClickHandler({ onAddWaypoint, circleCenter, maxRange, showToast }) {
     useMapEvents({
         click(e) {
+            if (circleCenter) {
+                const centerLatLng = L.latLng(circleCenter[0], circleCenter[1]);
+                const distance = e.latlng.distanceTo(centerLatLng);
+                if (distance > maxRange) {
+                    if (showToast) showToast('warning', `Cannot add a waypoint outside the fence`);
+                    return;
+                }
+            }
             onAddWaypoint(e.latlng);
         },
     });
@@ -68,7 +76,7 @@ function MapCenterUpdater({ dronePosition, homePosition }) {
 const TelemetryOverlay = ({ telemetry }) => {
     const location = telemetry?.location || {};
     const vehicleState = telemetry?.vehicle_state || {};
-    
+
     const altitude = location.altitude != null ? location.altitude.toFixed(1) : '--';
     const speed = location.ground_speed != null ? location.ground_speed.toFixed(1) : '--';
     const flightMode = vehicleState.mode || 'UNKNOWN';
@@ -95,6 +103,16 @@ const TelemetryOverlay = ({ telemetry }) => {
 
 export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode = true, telemetry, trajectory, homePosition, selectedDrone, selectedMission }) {
     const defaultCenter = [-6.200000, 106.816666]; // Jakarta fallback
+    const mapRef = useRef(null);
+
+    // Toast notification state
+    const [toast, setToast] = useState(null);
+    const toastTimer = useRef(null);
+    const showToast = (type, message, duration = 4000) => {
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        setToast({ type, message });
+        toastTimer.current = setTimeout(() => setToast(null), duration);
+    };
 
     // --- Mission detail computations (from selectedMission API response) ---
     const missionWaypoints = selectedMission?.waypoints || [];
@@ -211,6 +229,7 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
     return (
         <div className="relative w-full h-full bg-[#181d25]">
             <MapContainer
+                ref={mapRef}
                 center={mapCenter}
                 zoom={dronePosition ? 16 : 14}
                 style={{ height: '100%', width: '100%' }}
@@ -224,7 +243,7 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                     attribution="Tiles &copy; Esri"
                 />
 
-                <MapClickHandler onAddWaypoint={onAddWaypoint} />
+                <MapClickHandler onAddWaypoint={onAddWaypoint} circleCenter={circleCenter} maxRange={maxRange} showToast={showToast} />
 
                 {/* Max Radius Circle */}
                 {circleCenter && (
@@ -284,16 +303,38 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
 
             {/* Map Custom Controls (Zoom/Location) */}
             <div className="absolute top-[60vh] left-4 z-[400] flex flex-col bg-[#1c222c]/90 backdrop-blur border border-[#2a3240] rounded-xl overflow-hidden shadow-lg">
-                <button className="p-3 hover:bg-[#202834] transition flex items-center justify-center border-b border-[#2a3240]">
+                <button
+                    onClick={() => {
+                        if (mapRef.current) {
+                            if (dronePosition) {
+                                mapRef.current.flyTo(dronePosition, 16, { duration: 1.5 });
+                            } else if (dockPosition || droneHome) {
+                                mapRef.current.flyTo(dockPosition || droneHome, 16, { duration: 1.5 });
+                            } else {
+                                mapRef.current.flyTo(defaultCenter, 14, { duration: 1.5 });
+                            }
+                        }
+                    }}
+                    className="p-3 hover:bg-[#202834] transition flex items-center justify-center border-b border-[#2a3240]"
+                    title="Find Current Location"
+                >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                         <polygon points="12 2 15 13 22 13 16 16 18 22 12 18 6 22 8 16 2 13 9 13 12 2" fill="currentColor"></polygon>
                     </svg>
                 </button>
-                <button className="p-3 hover:bg-[#202834] transition flex items-center justify-center border-b border-[#2a3240]">
+                <button
+                    onClick={() => mapRef.current?.zoomIn()}
+                    className="p-3 hover:bg-[#202834] transition flex items-center justify-center border-b border-[#2a3240]"
+                    title="Zoom In"
+                >
                     <span className="text-white text-lg font-mono leading-none">+</span>
                 </button>
-                <button className="p-3 hover:bg-[#202834] transition flex items-center justify-center">
+                <button
+                    onClick={() => mapRef.current?.zoomOut()}
+                    className="p-3 hover:bg-[#202834] transition flex items-center justify-center"
+                    title="Zoom Out"
+                >
                     <span className="text-white text-lg font-mono leading-none">-</span>
                 </button>
             </div>
@@ -317,11 +358,10 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-gray-400 text-[10px] mb-1">Status</span>
-                                <span className={`text-xs font-bold ${
-                                    selectedMission?.status === 'Completed' ? 'text-green-400' :
-                                    selectedMission?.status === 'In Progress' ? 'text-blue-400' :
-                                    selectedMission?.status === 'Waiting' ? 'text-amber-400' : 'text-white'
-                                }`}>{selectedMission?.status || '--'}</span>
+                                <span className={`text-xs font-bold ${selectedMission?.status === 'Completed' ? 'text-green-400' :
+                                        selectedMission?.status === 'In Progress' ? 'text-blue-400' :
+                                            selectedMission?.status === 'Waiting' ? 'text-amber-400' : 'text-white'
+                                    }`}>{selectedMission?.status || '--'}</span>
                             </div>
                             <div className="flex flex-col">
                                 <span className="text-gray-400 text-[10px] mb-1">Flight Distance (meter)</span>
@@ -466,8 +506,60 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                     </div>
                 </>
             )}
-            
+
             <TelemetryOverlay telemetry={telemetry} />
+
+            {/* Custom Toast Notification */}
+            {toast && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] animate-[slideDown_0.35s_ease-out]"
+                    style={{ animation: 'slideDown 0.35s ease-out' }}>
+                    <div className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border shadow-2xl backdrop-blur-md min-w-[320px] max-w-[480px] ${toast.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 shadow-emerald-900/40' :
+                            toast.type === 'error' ? 'bg-red-950/90 border-red-500/40 shadow-red-900/40' :
+                                'bg-amber-950/90 border-amber-500/40 shadow-amber-900/40'
+                        }`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-500/20' :
+                                toast.type === 'error' ? 'bg-red-500/20' :
+                                    'bg-amber-500/20'
+                            }`}>
+                            {toast.type === 'success' && (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            )}
+                            {toast.type === 'error' && (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+                            )}
+                            {toast.type === 'warning' && (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                            )}
+                        </div>
+
+                        <div className="flex-1">
+                            <div className={`text-[11px] font-semibold uppercase tracking-wider mb-0.5 ${toast.type === 'success' ? 'text-emerald-400' :
+                                    toast.type === 'error' ? 'text-red-400' :
+                                        'text-amber-400'
+                                }`}>
+                                {toast.type === 'success' ? 'Success' : toast.type === 'error' ? 'Error' : 'Warning'}
+                            </div>
+                            <div className="text-[13px] text-gray-200 leading-snug">{toast.message}</div>
+                        </div>
+
+                        <button
+                            onClick={() => { if (toastTimer.current) clearTimeout(toastTimer.current); setToast(null); }}
+                            className="w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors shrink-0"
+                        >
+                            <svg width="12" height="12" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="text-gray-400">
+                                <path d="M2 2L8 8M8 2L2 8" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes slideDown {
+                    from { opacity: 0; transform: translate(-50%, -20px); }
+                    to { opacity: 1; transform: translate(-50%, 0); }
+                }
+            `}</style>
         </div>
     );
 }

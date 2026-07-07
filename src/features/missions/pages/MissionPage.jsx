@@ -79,8 +79,17 @@ export default function MissionPage() {
     const handleWaypointDataChange = (id, field, value) => {
         setWaypointsData(prev => ({
             ...prev,
-            [id]: { ...(prev[id] || { altitude: 15, action: 'hold', action_duration: 5 }), [field]: value }
+            [id]: { ...(prev[id] || { altitude: 15, action: 'Take Picture', action_duration: 5 }), [field]: value }
         }));
+    };
+
+    const handleRemoveWaypoint = (id) => {
+        setWaypoints(prev => prev.filter(wp => wp.id !== id));
+        setWaypointsData(prev => {
+            const newData = { ...prev };
+            delete newData[id];
+            return newData;
+        });
     };
 
     const handleClearWaypoints = () => {
@@ -347,6 +356,7 @@ export default function MissionPage() {
                                 waypoints={waypoints}
                                 waypointsData={waypointsData}
                                 onWaypointDataChange={handleWaypointDataChange}
+                                onRemoveWaypoint={handleRemoveWaypoint}
                                 onCancel={handleCancelAddMission}
                             />
                         </div>

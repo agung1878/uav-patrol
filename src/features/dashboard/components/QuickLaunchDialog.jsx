@@ -26,7 +26,7 @@ export default function QuickLaunchDialog({ isOpen, onClose, onConfirm }) {
     ];
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0a0f18]/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-[#0a0f18]/80 backdrop-blur-sm">
             <div className="bg-[#151a25]/95 rounded-[12px] border border-[#2a3240] shadow-[0_0_50px_rgba(0,0,0,0.8)] w-[680px] overflow-hidden flex flex-col p-8 backdrop-blur-md">
 
                 {/* Header */}

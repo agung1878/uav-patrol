@@ -294,7 +294,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
         : [];
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#0a0f18]/80 backdrop-blur-sm select-none">
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-[#0a0f18]/80 backdrop-blur-sm select-none">
 
             {/* Main Form Container */}
             <div className="w-[840px] flex flex-col relative">

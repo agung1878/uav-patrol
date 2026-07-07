@@ -140,7 +140,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
 
             {/* === Top Right Recording Badge & Fullscreen === */}
             <div className={`absolute top-4 right-4 z-20 flex gap-2 ${isSmallPanel ? 'scale-[0.8] origin-top-right' : ''}`}>
-                <div className="bg-black/50 border border-gray-500 px-3 py-1 rounded flex items-center justify-center space-x-4">
+                <div className="bg-black/50 border border-gray-500 px-3 py-1 rounded flex items-center justify-center space-x-4 hidden">
                     <div className="flex items-center space-x-2">
                         <div className={`w-2.5 h-2.5 rounded-full ${isStreaming ? 'bg-red-600 animate-pulse' : 'bg-gray-600'} mt-[1px]`}></div>
                         <span className="text-gray-100 text-[11px] font-bold uppercase tracking-wider">
@@ -165,8 +165,8 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             {/* === Bottom Left Status === */}
             <div className={`absolute bottom-5 left-5 z-20 flex flex-col items-start bg-black/30 px-2 py-1 rounded ${isSmallPanel ? 'scale-[0.8] origin-bottom-left' : ''}`}>
                 <span className="text-gray-300 text-[10px] uppercase font-bold tracking-wider drop-shadow-md">Camera Status</span>
-                <span className={`text-[13px] font-semibold tracking-wide drop-shadow-md mt-0.5 ${isStreaming ? 'text-emerald-400' : isConnecting ? 'text-amber-400' : 'text-gray-400'}`}>
-                    {isStreaming ? 'Live Stream' : isConnecting ? 'Connecting...' : 'Offline'}
+                <span className={`text-[13px] font-semibold tracking-wide drop-shadow-md mt-0.5 ${isStreaming ? 'text-emerald-400' : isConnecting ? 'text-amber-400' : 'text-red-400'}`}>
+                    {isStreaming ? 'Live Stream' : isConnecting ? 'Connecting...' : 'OFFLINE'}
                 </span>
             </div>
 

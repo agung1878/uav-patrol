@@ -7,6 +7,7 @@ import HistoryPage from '../features/history/pages/HistoryPage'
 import AboutPage from '../features/settings/pages/AboutPage'
 import UserManagementPage from '../features/settings/pages/UserManagementPage'
 import LoginPage from '../features/auth/pages/LoginPage'
+import DockingPanelPage from '../features/settings/pages/DockingPanelPage'
 
 function App() {
   const location = useLocation();
@@ -24,6 +25,7 @@ function App() {
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/user-management" element={<UserManagementPage />} />
+        <Route path="/docking-panel" element={<DockingPanelPage />} />
       </Routes>
     </div>
   )

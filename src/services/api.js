@@ -21,6 +21,24 @@ export const authService = {
         return data;
     },
 
+    logout: async () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        try {
+            await fetch(`${API_BASE_URL}/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+        } catch (err) {
+            console.error('Logout request failed', err);
+        } finally {
+            localStorage.removeItem('authToken');
+        }
+    },
+
     getWsToken: async () => {
         const token = localStorage.getItem('authToken');
         if (!token) throw new Error('No authentication token found');

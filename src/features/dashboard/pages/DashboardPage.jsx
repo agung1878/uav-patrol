@@ -15,6 +15,7 @@ export default function DashboardPage() {
     const [isLaunchFormOpen, setIsLaunchFormOpen] = useState(false);
     const [selectedLaunchType, setSelectedLaunchType] = useState('ROI');
     const [isSwapped, setIsSwapped] = useState(false); // new state for swapping video and map
+    const [manualRefreshCounter, setManualRefreshCounter] = useState(0);
 
     // Toast notification state
     const [toast, setToast] = useState(null); // { type: 'success'|'error'|'warning', message: string }
@@ -103,213 +104,212 @@ export default function DashboardPage() {
 
     return (
         <>
-        <div
-            className="p-[28px] flex flex-row gap-[28px] w-full h-[calc(100vh-104px)] overflow-hidden"
-            style={{ backgroundImage: `url('/src/assets/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-        >
-            {/* Column 1 */}
-            <div className="flex-1 flex flex-col gap-[28px] min-w-0">
-                {/* Main View (Video or Map) */}
-                <div className="flex-1 rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg min-h-0 relative group">
-                    {isSwapped ? (
-                        <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} trajectory={selectedTrajectory} homePosition={selectedHome} missionWaypoints={missionWaypoints} isSmallPanel={false} />
-                    ) : (
-                        <MainVideoFeedPanel
-                            videoStream={videoStream}
-                            isStreaming={isStreaming}
-                            isConnecting={isConnecting}
-                            streamError={streamError}
-                            heading={droneHeading}
-                            isSmallPanel={false}
-                        />
-                    )}
-                    
-                    {/* Swap Button (Floating on Main View) */}
-                    <button 
-                        onClick={() => setIsSwapped(!isSwapped)}
-                        className="absolute bottom-6 left-6 z-[400] bg-black/60 hover:bg-black/80 border border-gray-500 p-2.5 rounded-xl transition-all shadow-lg opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2"
-                        title="Swap View"
-                    >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
-                            <path d="M8 3L4 7l4 4" />
-                            <path d="M4 7h16" />
-                            <path d="M16 21l4-4-4-4" />
-                            <path d="M20 17H4" />
-                        </svg>
-                        <span className="text-gray-300 text-[12px] font-bold tracking-wider uppercase">Swap View</span>
-                    </button>
-                </div>
-                {/* Bottom Container View */}
-                <div className="h-[240px] flex flex-row p-[14px] gap-[16px] shrink-0 bg-[#27313D] border border-[#2a3240] rounded-[24px] shadow-lg overflow-hidden">
-                    <div className={`w-[413px] h-full shrink-0 group relative ${(isLaunchDialogOpen || isLaunchFormOpen) ? 'invisible' : ''}`}>
+            <div
+                className="p-[28px] flex flex-row gap-[28px] w-full h-[calc(100vh-104px)] overflow-hidden"
+                style={{ backgroundImage: `url('/src/assets/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+            >
+                {/* Column 1 */}
+                <div className="flex-1 flex flex-col gap-[28px] min-w-0">
+                    {/* Main View (Video or Map) */}
+                    <div className="flex-1 rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg min-h-0 relative group">
                         {isSwapped ? (
+                            <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} trajectory={selectedTrajectory} homePosition={selectedHome} missionWaypoints={missionWaypoints} isSmallPanel={false} />
+                        ) : (
                             <MainVideoFeedPanel
                                 videoStream={videoStream}
                                 isStreaming={isStreaming}
                                 isConnecting={isConnecting}
                                 streamError={streamError}
                                 heading={droneHeading}
-                                isSmallPanel={true}
+                                isSmallPanel={false}
                             />
-                        ) : (
-                            <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} trajectory={selectedTrajectory} homePosition={selectedHome} missionWaypoints={missionWaypoints} isSmallPanel={true} />
                         )}
-                        
-                        {/* Swap Button (Floating on Mini View) */}
-                        <button 
+
+                        {/* Swap Button (Floating on Main View) */}
+                        <button
                             onClick={() => setIsSwapped(!isSwapped)}
-                            className="absolute top-3 right-3 z-[400] bg-black/60 hover:bg-black/80 border border-gray-500 p-2 rounded-lg transition-all shadow-md opacity-0 group-hover:opacity-100"
+                            className="absolute bottom-6 left-6 z-[400] bg-black/60 hover:bg-black/80 border border-gray-500 p-2.5 rounded-xl transition-all shadow-lg opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2"
                             title="Swap View"
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
-                                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
+                                <path d="M8 3L4 7l4 4" />
+                                <path d="M4 7h16" />
+                                <path d="M16 21l4-4-4-4" />
+                                <path d="M20 17H4" />
                             </svg>
+                            <span className="text-gray-300 text-[12px] font-bold tracking-wider uppercase">Swap View</span>
                         </button>
                     </div>
-                    <div className="flex-1 h-full min-w-0">
-                        <MissionListPanel refreshKey={missionStatusVersion} />
+                    {/* Bottom Container View */}
+                    <div className="h-[240px] flex flex-row p-[14px] gap-[16px] shrink-0 bg-[#27313D] border border-[#2a3240] rounded-[24px] shadow-lg overflow-hidden">
+                        <div className={`w-[413px] h-full shrink-0 group relative ${(isLaunchDialogOpen || isLaunchFormOpen) ? 'invisible' : ''}`}>
+                            {isSwapped ? (
+                                <MainVideoFeedPanel
+                                    videoStream={videoStream}
+                                    isStreaming={isStreaming}
+                                    isConnecting={isConnecting}
+                                    streamError={streamError}
+                                    heading={droneHeading}
+                                    isSmallPanel={true}
+                                />
+                            ) : (
+                                <MapViewPanel telemetry={selectedTelemetry} selectedDrone={selectedDrone} trajectory={selectedTrajectory} homePosition={selectedHome} missionWaypoints={missionWaypoints} isSmallPanel={true} />
+                            )}
+
+                            {/* Swap Button (Floating on Mini View) */}
+                            <button
+                                onClick={() => setIsSwapped(!isSwapped)}
+                                className="absolute top-3 right-3 z-[400] bg-black/60 hover:bg-black/80 border border-gray-500 p-2 rounded-lg transition-all shadow-md opacity-0 group-hover:opacity-100"
+                                title="Swap View"
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-300">
+                                    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="flex-1 h-full min-w-0">
+                            <MissionListPanel refreshKey={`${missionStatusVersion}-${manualRefreshCounter}`} />
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Column 2 */}
-            <div className="w-[440px] shrink-0 flex flex-col gap-[28px]">
-                {/* Drone Info */}
-                <div className="flex-1 min-h-0">
-                    <DroneInfoPanel
-                        drones={drones}
-                        selectedDrone={selectedDrone}
-                        onSelectDrone={setSelectedDrone}
-                        isLoading={isDronesLoading}
-                        errorMsg={dronesError}
-                        telemetry={selectedTelemetry}
-                        isTelemetryConnected={isTelemetryConnected}
-                    />
+                {/* Column 2 */}
+                <div className="w-[440px] shrink-0 flex flex-col gap-[28px]">
+                    {/* Drone Info */}
+                    <div className="flex-1 min-h-0">
+                        <DroneInfoPanel
+                            drones={drones}
+                            selectedDrone={selectedDrone}
+                            onSelectDrone={setSelectedDrone}
+                            isLoading={isDronesLoading}
+                            errorMsg={dronesError}
+                            telemetry={selectedTelemetry}
+                            isTelemetryConnected={isTelemetryConnected}
+                        />
+                    </div>
+                    {/* Button Stream */}
+                    <div className="h-[360px] shrink-0">
+                        <StreamButtonPanel
+                            onLaunchClick={() => setIsLaunchDialogOpen(true)}
+                            isStreaming={isStreaming || isConnecting}
+                        />
+                    </div>
                 </div>
-                {/* Button Stream */}
-                <div className="h-[360px] shrink-0">
-                    <StreamButtonPanel 
-                        onLaunchClick={() => setIsLaunchDialogOpen(true)} 
-                        isStreaming={isStreaming || isConnecting}
-                    />
-                </div>
-            </div>
 
-            {/* Dialogs */}
-            <QuickLaunchDialog
-                isOpen={isLaunchDialogOpen}
-                onClose={() => setIsLaunchDialogOpen(false)}
-                onConfirm={(selectedType) => {
-                    setSelectedLaunchType(selectedType);
-                    setIsLaunchDialogOpen(false);
-                    setIsLaunchFormOpen(true);
-                }}
-            />
+                {/* Dialogs */}
+                <QuickLaunchDialog
+                    isOpen={isLaunchDialogOpen}
+                    onClose={() => setIsLaunchDialogOpen(false)}
+                    onConfirm={(selectedType) => {
+                        setSelectedLaunchType(selectedType);
+                        setIsLaunchDialogOpen(false);
+                        setIsLaunchFormOpen(true);
+                    }}
+                />
 
-            <QuickLaunchDialogForm
-                isOpen={isLaunchFormOpen}
-                missionType={selectedLaunchType}
-                telemetry={selectedTelemetry}
-                homePosition={selectedHome}
-                selectedDrone={selectedDrone}
-                onClose={() => setIsLaunchFormOpen(false)}
-                onLaunch={async (launchData) => {
-                    const { type, takeoffAltitude, flightAltitude, holdDuration, roiPosition, spiralWaypoints } = launchData;
-                    console.log('[QuickLaunch] Launching:', JSON.stringify(launchData, null, 2));
+                <QuickLaunchDialogForm
+                    isOpen={isLaunchFormOpen}
+                    missionType={selectedLaunchType}
+                    telemetry={selectedTelemetry}
+                    homePosition={selectedHome}
+                    selectedDrone={selectedDrone}
+                    onClose={() => setIsLaunchFormOpen(false)}
+                    onLaunch={async (launchData) => {
+                        const { type, takeoffAltitude, flightAltitude, holdDuration, roiPosition, spiralWaypoints } = launchData;
+                        console.log('[QuickLaunch] Launching:', JSON.stringify(launchData, null, 2));
 
-                    // Build "now" schedule (2 minutes from now)
-                    const pad = (n) => String(n).padStart(2, '0');
-                    const offset = new Date().getTimezoneOffset();
-                    const sign = offset <= 0 ? '+' : '-';
-                    const tzOffset = `${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
-                    const now = new Date(Date.now() + 2 * 60 * 1000);
-                    const runAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:00${tzOffset}`;
+                        // Build "now" schedule (2 minutes from now)
+                        const pad = (n) => String(n).padStart(2, '0');
+                        const offset = new Date().getTimezoneOffset();
+                        const sign = offset <= 0 ? '+' : '-';
+                        const tzOffset = `${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
+                        const now = new Date(Date.now() + 2 * 60 * 1000);
+                        const runAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:00${tzOffset}`;
 
-                    const missionData = {
-                        mission_name: `Quick ${type} ${pad(now.getHours())}${pad(now.getMinutes())}`,
-                        takeoff_altitude: takeoffAltitude || 15,
-                        status: 'Waiting',
-                        schedule_timezone: 'Asia/Jakarta',
-                        schedule_type: 'one_time',
-                        schedule_config: { run_at: runAt },
-                    };
-
-                    if (type === 'Launch') {
-                        // Launch mission: simple takeoff → hold → land, no waypoints or ROI
-                        missionData.takeoff_hold_duration = holdDuration || 30;
-                        missionData.waypoints = [];
-                    } else if (type === 'ROI') {
-                        // ROI mission: waypoint at takeoff/home position, ROI field for camera target
-                        if (!roiPosition) {
-                            showToast('warning', 'Please set an ROI point on the map first.');
-                            return;
-                        }
-                        // Use home/dock position for the waypoint (takeoff coordinates)
-                        const homeLat = selectedHome ? selectedHome[0] : (selectedTelemetry?.location?.latitude || roiPosition.lat);
-                        const homeLng = selectedHome ? selectedHome[1] : (selectedTelemetry?.location?.longitude || roiPosition.lng);
-                        missionData.waypoints = [{
-                            sequence_order: 1,
-                            latitude: homeLat,
-                            longitude: homeLng,
-                            altitude: takeoffAltitude || 15,
-                            action: 'Take Picture',
-                            action_duration: 5,
-                        }];
-                        missionData.roi = {
-                            latitude: roiPosition.lat,
-                            longitude: roiPosition.lng,
+                        const missionData = {
+                            mission_name: `Quick ${type} ${pad(now.getHours())}${pad(now.getMinutes())}`,
+                            takeoff_altitude: takeoffAltitude || 15,
+                            status: 'Waiting',
+                            schedule_timezone: 'Asia/Jakarta',
+                            schedule_type: 'one_time',
+                            schedule_config: { run_at: runAt },
                         };
-                    } else if (type === 'Spiral') {
-                        // Spiral mission: waypoints from generated spiral points
-                        if (!spiralWaypoints || spiralWaypoints.length === 0) {
-                            showToast('warning', 'Please generate spiral waypoints first.');
-                            return;
+
+                        if (type === 'Launch') {
+                            // Launch mission: simple takeoff → hold → land, no waypoints or ROI
+                            missionData.takeoff_hold_duration = holdDuration || 30;
+                            missionData.waypoints = [];
+                        } else if (type === 'ROI') {
+                            // ROI mission: waypoint at takeoff/home position, ROI field for camera target
+                            if (!roiPosition) {
+                                showToast('warning', 'Please set an ROI point on the map first.');
+                                return;
+                            }
+                            // Use home/dock position for the waypoint (takeoff coordinates)
+                            const homeLat = selectedHome ? selectedHome[0] : (selectedTelemetry?.location?.latitude || roiPosition.lat);
+                            const homeLng = selectedHome ? selectedHome[1] : (selectedTelemetry?.location?.longitude || roiPosition.lng);
+                            missionData.waypoints = [{
+                                sequence_order: 1,
+                                latitude: homeLat,
+                                longitude: homeLng,
+                                altitude: takeoffAltitude || 15,
+                                action: 'Take Picture',
+                                action_duration: 5,
+                            }];
+                            missionData.roi = {
+                                latitude: roiPosition.lat,
+                                longitude: roiPosition.lng,
+                            };
+                        } else if (type === 'Spiral') {
+                            // Spiral mission: waypoints from generated spiral points
+                            if (!spiralWaypoints || spiralWaypoints.length === 0) {
+                                showToast('warning', 'Please generate spiral waypoints first.');
+                                return;
+                            }
+                            missionData.waypoints = spiralWaypoints.map((wp, i) => ({
+                                sequence_order: i + 1,
+                                latitude: wp.lat,
+                                longitude: wp.lng,
+                                altitude: flightAltitude || takeoffAltitude || 15,
+                                action: 'Take Picture',
+                                action_duration: 5,
+                            }));
                         }
-                        missionData.waypoints = spiralWaypoints.map((wp, i) => ({
-                            sequence_order: i + 1,
-                            latitude: wp.lat,
-                            longitude: wp.lng,
-                            altitude: flightAltitude || takeoffAltitude || 15,
-                            action: 'Take Picture',
-                            action_duration: 5,
-                        }));
-                    }
 
-                    try {
-                        console.log('[QuickLaunch] Registering mission:', JSON.stringify(missionData, null, 2));
-                        const result = await missionService.registerMission(missionData);
-                        console.log('[QuickLaunch] Result:', result);
+                        try {
+                            console.log('[QuickLaunch] Registering mission:', JSON.stringify(missionData, null, 2));
+                            const result = await missionService.registerMission(missionData);
+                            console.log('[QuickLaunch] Result:', result);
 
-                        if (result.error) {
-                            showToast('error', `Mission creation failed: ${result.error}`);
-                            return;
+                            if (result.error) {
+                                showToast('error', `Mission creation failed: ${result.error}`);
+                                return;
+                            }
+
+                            setIsLaunchFormOpen(false);
+                            showToast('success', 'Mission launched successfully!');
+                            setManualRefreshCounter(prev => prev + 1); // Force immediate list refresh
+                        } catch (err) {
+                            console.error('[QuickLaunch] Error:', err);
+                            showToast('error', `Failed to launch mission: ${err.message}`);
                         }
-
-                        setIsLaunchFormOpen(false);
-                        showToast('success', 'Mission launched successfully!');
-                    } catch (err) {
-                        console.error('[QuickLaunch] Error:', err);
-                        showToast('error', `Failed to launch mission: ${err.message}`);
-                    }
-                }}
-            />
-        </div>
+                    }}
+                />
+            </div>
 
             {/* Custom Toast Notification */}
             {toast && (
                 <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[9999] animate-[slideDown_0.35s_ease-out]"
-                     style={{ animation: 'slideDown 0.35s ease-out' }}>
-                    <div className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border shadow-2xl backdrop-blur-md min-w-[320px] max-w-[480px] ${
-                        toast.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 shadow-emerald-900/40' :
+                    style={{ animation: 'slideDown 0.35s ease-out' }}>
+                    <div className={`flex items-center gap-3 px-5 py-3.5 rounded-xl border shadow-2xl backdrop-blur-md min-w-[320px] max-w-[480px] ${toast.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 shadow-emerald-900/40' :
                         toast.type === 'error' ? 'bg-red-950/90 border-red-500/40 shadow-red-900/40' :
-                        'bg-amber-950/90 border-amber-500/40 shadow-amber-900/40'
-                    }`}>
-                        {/* Icon */}
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                            toast.type === 'success' ? 'bg-emerald-500/20' :
-                            toast.type === 'error' ? 'bg-red-500/20' :
-                            'bg-amber-500/20'
+                            'bg-amber-950/90 border-amber-500/40 shadow-amber-900/40'
                         }`}>
+                        {/* Icon */}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${toast.type === 'success' ? 'bg-emerald-500/20' :
+                            toast.type === 'error' ? 'bg-red-500/20' :
+                                'bg-amber-500/20'
+                            }`}>
                             {toast.type === 'success' && (
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
                             )}
@@ -323,11 +323,10 @@ export default function DashboardPage() {
 
                         {/* Message */}
                         <div className="flex-1">
-                            <div className={`text-[11px] font-semibold uppercase tracking-wider mb-0.5 ${
-                                toast.type === 'success' ? 'text-emerald-400' :
+                            <div className={`text-[11px] font-semibold uppercase tracking-wider mb-0.5 ${toast.type === 'success' ? 'text-emerald-400' :
                                 toast.type === 'error' ? 'text-red-400' :
-                                'text-amber-400'
-                            }`}>
+                                    'text-amber-400'
+                                }`}>
                                 {toast.type === 'success' ? 'Success' : toast.type === 'error' ? 'Error' : 'Warning'}
                             </div>
                             <div className="text-[13px] text-gray-200 leading-snug">{toast.message}</div>

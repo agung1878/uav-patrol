@@ -297,19 +297,22 @@ export default function HistoryPage() {
 
                     {/* Table Container */}
                     <div className="flex-1 bg-[#1e2532] rounded-[12px] border border-[#2a3240] overflow-hidden flex flex-col shadow-inner">
-                        {/* Table Header */}
-                        <div className="grid grid-cols-[1.8fr_1fr_0.8fr_1.5fr_0.8fr_0.8fr_1.2fr] gap-4 px-6 py-4 bg-[#1e2532] border-b border-[#2a3240] text-[13px] font-bold text-gray-100 tracking-wide sticky top-0 z-10">
-                            <div>Mission</div>
-                            <div>Schedule</div>
-                            <div>Waypoints</div>
-                            <div>Task</div>
-                            <div>Duration</div>
-                            <div>Status</div>
-                            <div>Media</div>
-                        </div>
+                        <div className="overflow-x-auto w-full flex-1 flex flex-col custom-scrollbar">
+                            <div className="min-w-[1000px] flex-1 flex flex-col">
+                                {/* Table Header */}
+                                <div className="grid grid-cols-[1.6fr_1fr_0.8fr_1.4fr_0.8fr_0.8fr_1.2fr_1.2fr] gap-4 px-6 py-4 bg-[#1e2532] border-b border-[#2a3240] text-[13px] font-bold text-gray-100 tracking-wide sticky top-0 z-10">
+                                    <div>Mission</div>
+                                    <div>Schedule</div>
+                                    <div>Waypoints</div>
+                                    <div>Task</div>
+                                    <div>Duration</div>
+                                    <div>Status</div>
+                                    <div>Media</div>
+                                    <div>Capture</div>
+                                </div>
 
-                        {/* Table Body (Scrollable) */}
-                        <div className="flex-1 overflow-y-auto no-scrollbar pb-2">
+                                {/* Table Body (Scrollable) */}
+                                <div className="flex-1 overflow-y-auto no-scrollbar pb-2">
                             {loading ? (
                                 <div className="flex items-center justify-center h-20 text-gray-400 text-xs">
                                     <svg className="animate-spin mr-2 h-4 w-4 text-orange-500" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
@@ -323,7 +326,7 @@ export default function HistoryPage() {
                                 filteredItems.map((row) => (
                                     <div
                                         key={row.id}
-                                        className={`grid grid-cols-[1.8fr_1fr_0.8fr_1.5fr_0.8fr_0.8fr_1.2fr] gap-4 px-6 py-3.5 border-b border-[#2a3240]/50 hover:bg-[#252b36] transition-colors items-center text-[12px] cursor-pointer ${selectedItem?.id === row.id ? 'bg-[#252b36] border-l-2 border-l-orange-500' : ''}`}
+                                        className={`grid grid-cols-[1.6fr_1fr_0.8fr_1.4fr_0.8fr_0.8fr_1.2fr_1.2fr] gap-4 px-6 py-3.5 border-b border-[#2a3240]/50 hover:bg-[#252b36] transition-colors items-center text-[12px] cursor-pointer ${selectedItem?.id === row.id ? 'bg-[#252b36] border-l-2 border-l-orange-500' : ''}`}
                                         onClick={() => setSelectedItem(row)}
                                     >
                                         <div className="text-gray-200 font-medium">{row.mission_name}</div>
@@ -339,7 +342,28 @@ export default function HistoryPage() {
                                                 <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
                                                     <DownloadIcon />
                                                     <div className="flex flex-col leading-tight">
-                                                        <a 
+                                                        <a
+                                                            href={`${STREAM_API_URL}/api/missions/${row.mission_id || row.id}/download`}
+                                                            download
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="text-[#3b82f6] underline decoration-[#3b82f6]/40 underline-offset-2 hover:text-orange-500 hover:decoration-orange-500/40"
+                                                        >
+                                                            Download
+                                                        </a>
+                                                        <span className="text-[10px] text-gray-500">Video</span>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-500 text-[11px] italic">Unavailable</span>
+                                            )}
+                                        </div>
+                                        {/* Capture Column */}
+                                        <div className="flex items-center gap-2">
+                                            {row.status === 'Completed' || row.status === 'Failed' ? (
+                                                <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity">
+                                                    <DownloadIcon />
+                                                    <div className="flex flex-col leading-tight">
+                                                        <a
                                                             href={`${STREAM_API_URL}/api/missions/${row.mission_id || row.id}/download`}
                                                             download
                                                             onClick={(e) => e.stopPropagation()}
@@ -360,6 +384,8 @@ export default function HistoryPage() {
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
                 {/* RIGHT PANE: Trajectory & Detail */}
                 <div className="flex-1 flex flex-col gap-[20px]">
