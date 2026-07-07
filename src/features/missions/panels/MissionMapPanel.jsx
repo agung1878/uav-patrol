@@ -235,12 +235,15 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                 style={{ height: '100%', width: '100%' }}
                 zoomControl={false}
                 scrollWheelZoom={true}
+                maxZoom={22}
             >
                 <MapCenterUpdater dronePosition={dronePosition} homePosition={dockPosition || droneHome} />
                 {/* Esri Satellite tile layer */}
                 <TileLayer
                     url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                     attribution="Tiles &copy; Esri"
+                    maxZoom={22}
+                    maxNativeZoom={19}
                 />
 
                 <MapClickHandler onAddWaypoint={onAddWaypoint} circleCenter={circleCenter} maxRange={maxRange} showToast={showToast} />

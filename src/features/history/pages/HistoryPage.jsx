@@ -399,10 +399,13 @@ export default function HistoryPage() {
                                 style={{ height: '100%', width: '100%' }}
                                 zoomControl={false}
                                 scrollWheelZoom={true}
+                                maxZoom={22}
                             >
                                 <TileLayer
                                     url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                                    attribution=""
+                                    attribution="Tiles &copy; Esri"
+                                    maxZoom={22}
+                                    maxNativeZoom={19}
                                 />
 
                                 {/* Waypoint route line */}

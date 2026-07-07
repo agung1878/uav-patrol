@@ -6,6 +6,7 @@ import DroneInfoPanel from '../panels/DroneInfoPanel';
 import StreamButtonPanel from '../panels/StreamButtonPanel';
 import QuickLaunchDialog from '../components/QuickLaunchDialog';
 import QuickLaunchDialogForm from '../components/QuickLaunchDialogForm';
+import ConflictDialog from '../../missions/components/ConflictDialog';
 import { uavService, missionService } from '../../../services/api';
 import useTelemetry from '../../../shared/hooks/useTelemetry';
 import useDetectionStream from '../../../shared/hooks/useDetectionStream';
@@ -16,6 +17,14 @@ export default function DashboardPage() {
     const [selectedLaunchType, setSelectedLaunchType] = useState('ROI');
     const [isSwapped, setIsSwapped] = useState(false); // new state for swapping video and map
     const [manualRefreshCounter, setManualRefreshCounter] = useState(0);
+
+    // Conflict & Submission state
+    const [conflictData, setConflictData] = useState(null);
+    const [showConflictDialog, setShowConflictDialog] = useState(false);
+    const pendingMissionData = useRef(null);
+    const [showHistoryGuard, setShowHistoryGuard] = useState(false);
+    const [historyGuardData, setHistoryGuardData] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Toast notification state
     const [toast, setToast] = useState(null); // { type: 'success'|'error'|'warning', message: string }
@@ -101,6 +110,63 @@ export default function DashboardPage() {
 
     // Heading for compass widget
     const droneHeading = selectedTelemetry?.location?.heading || 0;
+
+    const createMission = async (missionData, extraFields = {}) => {
+        setIsSubmitting(true);
+        try {
+            const payload = { ...missionData, ...extraFields };
+            console.log('[QuickLaunch] Registering mission:', JSON.stringify(payload, null, 2));
+            const result = await missionService.registerMission(payload);
+            console.log('[QuickLaunch] Registration result:', result);
+
+            if (result.error) {
+                if (result.code === 'mission_schedule_conflict') {
+                    setConflictData(result);
+                    setShowConflictDialog(true);
+                    setIsSubmitting(false);
+                    return;
+                }
+                if (result.code === 'mission_recent_history_guard') {
+                    setHistoryGuardData(result);
+                    setShowHistoryGuard(true);
+                    setIsSubmitting(false);
+                    return;
+                }
+                throw new Error(result.error || 'Failed to register mission');
+            }
+
+            setIsLaunchFormOpen(false);
+            setShowConflictDialog(false);
+            setConflictData(null);
+            setShowHistoryGuard(false);
+            setHistoryGuardData(null);
+            showToast('success', 'Mission launched successfully!');
+            setManualRefreshCounter(prev => prev + 1); // Force immediate list refresh
+        } catch (err) {
+            console.error('[QuickLaunch] Error:', err);
+            showToast('error', `Failed to launch mission: ${err.message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleConflictConfirm = async (resolutions) => {
+        if (!pendingMissionData.current) return;
+        setShowConflictDialog(false);
+        await createMission(pendingMissionData.current, { conflict_resolutions: resolutions });
+    };
+
+    const handleConflictCancel = () => {
+        setShowConflictDialog(false);
+        setConflictData(null);
+    };
+
+    const handleHistoryGuardConfirm = async () => {
+        if (!pendingMissionData.current) return;
+        setShowHistoryGuard(false);
+        setHistoryGuardData(null);
+        await createMission(pendingMissionData.current, { confirm_recent_history_guard: true });
+    };
 
     return (
         <>
@@ -277,18 +343,28 @@ export default function DashboardPage() {
                         }
 
                         try {
-                            console.log('[QuickLaunch] Registering mission:', JSON.stringify(missionData, null, 2));
-                            const result = await missionService.registerMission(missionData);
-                            console.log('[QuickLaunch] Result:', result);
-
-                            if (result.error) {
-                                showToast('error', `Mission creation failed: ${result.error}`);
+                            pendingMissionData.current = missionData;
+                            
+                            // Step 1: Preview conflicts
+                            const previewPayload = {
+                                mission_name: missionData.mission_name,
+                                schedule_type: missionData.schedule_type,
+                                schedule_timezone: missionData.schedule_timezone,
+                                schedule_config: missionData.schedule_config,
+                                priority: 100, // Quick launch usually has high priority
+                                window_days: 30
+                            };
+                            
+                            const preview = await missionService.previewConflicts(previewPayload);
+                            console.log('[QuickLaunch] Conflict preview result:', preview);
+                            
+                            if (preview.has_conflict) {
+                                setConflictData(preview);
+                                setShowConflictDialog(true);
                                 return;
                             }
-
-                            setIsLaunchFormOpen(false);
-                            showToast('success', 'Mission launched successfully!');
-                            setManualRefreshCounter(prev => prev + 1); // Force immediate list refresh
+                            
+                            await createMission(missionData);
                         } catch (err) {
                             console.error('[QuickLaunch] Error:', err);
                             showToast('error', `Failed to launch mission: ${err.message}`);
@@ -341,6 +417,45 @@ export default function DashboardPage() {
                                 <path d="M2 2L8 8M8 2L2 8" />
                             </svg>
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Conflict Dialog */}
+            {showConflictDialog && (
+                <ConflictDialog
+                    conflictData={conflictData}
+                    scheduleType={pendingMissionData.current?.schedule_type}
+                    onConfirm={handleConflictConfirm}
+                    onCancel={handleConflictCancel}
+                    isSubmitting={isSubmitting}
+                />
+            )}
+
+            {/* History Guard Dialog */}
+            {showHistoryGuard && historyGuardData && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                    <div className="bg-[#1c222c] border border-[#2a3240] rounded-2xl shadow-2xl w-[440px] p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+                            </div>
+                            <h3 className="text-white text-[15px] font-bold">Recent Mission Activity</h3>
+                        </div>
+                        <p className="text-gray-400 text-[12px] mb-2">
+                            A recent mission <span className="text-white font-semibold">"{historyGuardData.recent_history?.mission_name}"</span> finished recently.
+                        </p>
+                        <p className="text-gray-500 text-[11px] mb-4">
+                            Earliest available at: <span className="text-amber-400 font-mono">{new Date(historyGuardData.recent_history?.available_at).toLocaleString()}</span>
+                        </p>
+                        <div className="flex justify-end gap-2">
+                            <button onClick={() => { setShowHistoryGuard(false); setHistoryGuardData(null); }} className="px-4 py-2 rounded-lg border border-[#3b4452] text-gray-300 text-[12px] font-semibold hover:bg-[#2d3745]">
+                                Cancel
+                            </button>
+                            <button onClick={handleHistoryGuardConfirm} disabled={isSubmitting} className="px-4 py-2 rounded-lg bg-gradient-to-b from-[#ea580c] to-[#9c3804] text-white text-[12px] font-bold hover:brightness-110 disabled:opacity-50">
+                                {isSubmitting ? 'Creating...' : 'Create Anyway'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

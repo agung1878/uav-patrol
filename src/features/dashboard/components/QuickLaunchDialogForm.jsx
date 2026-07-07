@@ -315,11 +315,14 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                             style={{ height: '100%', width: '100%' }}
                             zoomControl={false}
                             scrollWheelZoom={true}
+                            maxZoom={22}
                         >
                             {/* Esri Satellite tile layer */}
                             <TileLayer
                                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                                 attribution="Tiles &copy; Esri"
+                                maxZoom={22}
+                                maxNativeZoom={19}
                             />
 
                             {/* Unified Map Interaction Handler */}
