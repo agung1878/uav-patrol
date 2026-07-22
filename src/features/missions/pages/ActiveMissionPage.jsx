@@ -1,20 +1,70 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import MainVideoFeedPanel from '../../dashboard/panels/MainVideoFeedPanel';
 import MapViewPanel from '../../dashboard/panels/MapViewPanel';
 import useDetectionStream from '../../../shared/hooks/useDetectionStream';
 import useTelemetry from '../../../shared/hooks/useTelemetry';
 import { uavService } from '../../../services/api';
+import useDockStream from '../../../shared/hooks/useDockStream';
 
 // Mock components for the right sidebar and controls
-const DockCamPanel = () => (
-    <div className="relative w-full h-full bg-black">
-        {/* Placeholder image/bg for Dock Cam */}
-        <div className="absolute inset-0 bg-cover bg-center opacity-70" style={{ backgroundImage: `url('/src/assets/dock_cam_placeholder.png')`, backgroundColor: '#111' }} />
-        <div className="absolute top-3 left-3 px-2 py-0.5 bg-black/50 border border-orange-500/30 rounded text-[10px] uppercase font-bold text-orange-500 tracking-wider">
-            Dock Cam
+const DockCamPanel = () => {
+    const { videoStream, isStreaming, isConnecting, streamError } = useDockStream();
+    const videoRef = useRef(null);
+
+    useEffect(() => {
+        if (videoRef.current && videoStream) {
+            videoRef.current.srcObject = videoStream;
+        }
+    }, [videoStream]);
+
+    return (
+        <div className="relative w-full h-full bg-black overflow-hidden rounded-[24px]">
+            {/* Live Video */}
+            {(isStreaming || isConnecting) && (
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="absolute inset-0 w-full h-full object-cover z-0"
+                />
+            )}
+
+            {/* Placeholder (shown when NOT streaming) */}
+            {!isStreaming && !isConnecting && (
+                <div className="absolute inset-0 bg-cover bg-center opacity-70" style={{ backgroundImage: `url('/src/assets/dock_cam_placeholder.png')`, backgroundColor: '#111' }} />
+            )}
+
+            {/* Connecting Overlay */}
+            {isConnecting && !isStreaming && (
+                <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
+                    <div className="w-8 h-8 border-3 border-orange-500/30 border-t-orange-500 rounded-full animate-spin mb-3"></div>
+                    <span className="text-gray-300 text-[11px] font-medium tracking-wide">Connecting Dock...</span>
+                </div>
+            )}
+
+            {/* Error Overlay */}
+            {streamError && !isStreaming && !isConnecting && (
+                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2 opacity-80">
+                        <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
+                    </svg>
+                    <span className="text-red-400 text-[10px] font-medium max-w-[80%] text-center">{streamError}</span>
+                </div>
+            )}
+
+            <div className="absolute top-3 left-3 px-2 py-0.5 bg-black/50 border border-orange-500/30 rounded text-[10px] uppercase font-bold text-orange-500 tracking-wider z-20">
+                Dock Cam
+            </div>
+            {isStreaming && (
+                <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/50 px-2 py-0.5 rounded border border-emerald-500/30 z-20">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-emerald-400 text-[9px] font-bold tracking-wider">LIVE</span>
+                </div>
+            )}
         </div>
-    </div>
-);
+    );
+};
 
 const WeatherWidget = () => (
     <div className="p-4 flex flex-col justify-between h-full bg-[#111827]">
@@ -48,27 +98,127 @@ const WeatherWidget = () => (
     </div>
 );
 
-const DPadControl = () => (
-    <div className="w-[340px] h-full flex items-center justify-center gap-10 bg-[#151a25]/95 backdrop-blur rounded-[24px] border border-[#2a3240] shadow-lg shrink-0">
-        <div className="flex flex-col gap-4">
-            <button className="w-[56px] h-[56px] rounded-[16px] bg-[#111827] hover:bg-[#1f2937] flex items-center justify-center text-white text-2xl font-light shadow-md border border-[#374151] active:translate-y-0.5 transition-all">
-                +
-            </button>
-            <button className="w-[56px] h-[56px] rounded-[16px] bg-[#111827] hover:bg-[#1f2937] flex items-center justify-center text-white text-3xl font-light shadow-md border border-[#374151] active:translate-y-0.5 transition-all">
-                −
-            </button>
+const DPadControl = ({ onZoomIn, onZoomOut, onZoomStop, onArrow, onArrowStop, onJoystickDrag, onJoystickStop, zoomLevel }) => {
+    const intervalRef = useRef(null);
+    const [stickPos, setStickPos] = useState({ x: 0, y: 0 });
+    const isDragging = useRef(false);
+    const dragCenter = useRef({ x: 0, y: 0 });
+    const MAX_RADIUS = 35; // Max drag distance for the stick
+
+    // -- D-Pad Arrows --
+    const startArrow = (direction) => {
+        onArrow(direction);
+        intervalRef.current = setInterval(() => onArrow(direction), 200);
+    };
+    const stopArrow = () => {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        onArrowStop?.();
+    };
+
+    // -- Joystick Drag --
+    const handlePointerDown = (e) => {
+        isDragging.current = true;
+        dragCenter.current = { x: e.clientX, y: e.clientY };
+        e.target.setPointerCapture(e.pointerId);
+    };
+
+    const handlePointerMove = (e) => {
+        if (!isDragging.current) return;
+        const dx = e.clientX - dragCenter.current.x;
+        const dy = e.clientY - dragCenter.current.y;
+
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        let clampedX = dx;
+        let clampedY = dy;
+
+        if (distance > MAX_RADIUS) {
+            clampedX = (dx / distance) * MAX_RADIUS;
+            clampedY = (dy / distance) * MAX_RADIUS;
+        }
+
+        setStickPos({ x: clampedX, y: clampedY });
+
+        // Normalize vector to -1.0 to 1.0 range
+        const normalizedX = clampedX / MAX_RADIUS;
+        const normalizedY = clampedY / MAX_RADIUS; // positive is down
+
+        // Update gimbal based on joystick vector
+        if (onJoystickDrag) {
+            onJoystickDrag(normalizedX, normalizedY);
+        }
+    };
+
+    const handlePointerUp = (e) => {
+        isDragging.current = false;
+        setStickPos({ x: 0, y: 0 });
+        e.target.releasePointerCapture(e.pointerId);
+        if (onJoystickStop) onJoystickStop();
+    };
+
+    useEffect(() => () => clearInterval(intervalRef.current), []);
+
+    return (
+        <div className="w-[340px] h-full flex items-center justify-center gap-10 bg-[#151a25]/95 backdrop-blur rounded-[24px] border border-[#2a3240] shadow-lg shrink-0">
+            <div className="flex flex-col gap-4 items-center">
+                <button
+                    onMouseDown={onZoomIn}
+                    onMouseUp={onZoomStop}
+                    onMouseLeave={onZoomStop}
+                    className="w-[56px] h-[56px] rounded-[16px] bg-[#111827] hover:bg-[#1f2937] flex items-center justify-center text-white text-2xl font-light shadow-md border border-[#374151] active:translate-y-0.5 active:border-orange-500/50 transition-all select-none"
+                >
+                    +
+                </button>
+                {zoomLevel != null && (
+                    <span className="text-[10px] text-gray-400 font-mono">{Number(zoomLevel).toFixed(1)}x</span>
+                )}
+                <button
+                    onMouseDown={onZoomOut}
+                    onMouseUp={onZoomStop}
+                    onMouseLeave={onZoomStop}
+                    className="w-[56px] h-[56px] rounded-[16px] bg-[#111827] hover:bg-[#1f2937] flex items-center justify-center text-white text-3xl font-light shadow-md border border-[#374151] active:translate-y-0.5 active:border-orange-500/50 transition-all select-none"
+                >
+                    −
+                </button>
+            </div>
+            <div className="relative w-[140px] h-[140px] rounded-full bg-[#111827] border border-[#2a3240] flex items-center justify-center shadow-inner">
+                {/* Center stick */}
+                <div
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    className="w-[60px] h-[60px] rounded-full bg-[#1f2937] border border-[#374151] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),0_8px_16px_rgba(0,0,0,0.6)] z-10 cursor-grab active:cursor-grabbing hover:border-orange-500/50 touch-none"
+                    style={{ transform: `translate(${stickPos.x}px, ${stickPos.y}px)`, transition: isDragging.current ? 'none' : 'transform 0.1s ease-out' }}
+                ></div>
+                {/* Arrows — press and hold */}
+                <div
+                    onMouseDown={() => startArrow('up')}
+                    onMouseUp={stopArrow}
+                    onMouseLeave={stopArrow}
+                    className="absolute top-2 left-1/2 -translate-x-1/2 text-orange-500 text-[14px] cursor-pointer hover:text-orange-300 active:scale-125 transition-all select-none p-1"
+                >▲</div>
+                <div
+                    onMouseDown={() => startArrow('down')}
+                    onMouseUp={stopArrow}
+                    onMouseLeave={stopArrow}
+                    className="absolute bottom-2 left-1/2 -translate-x-1/2 text-orange-500 text-[14px] cursor-pointer hover:text-orange-300 active:scale-125 transition-all select-none p-1"
+                >▼</div>
+                <div
+                    onMouseDown={() => startArrow('left')}
+                    onMouseUp={stopArrow}
+                    onMouseLeave={stopArrow}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 text-orange-500 text-[14px] cursor-pointer hover:text-orange-300 active:scale-125 transition-all select-none p-1"
+                >◀</div>
+                <div
+                    onMouseDown={() => startArrow('right')}
+                    onMouseUp={stopArrow}
+                    onMouseLeave={stopArrow}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-orange-500 text-[14px] cursor-pointer hover:text-orange-300 active:scale-125 transition-all select-none p-1"
+                >▶</div>
+            </div>
         </div>
-        <div className="relative w-[140px] h-[140px] rounded-full bg-[#111827] border border-[#2a3240] flex items-center justify-center shadow-inner">
-            {/* Center stick */}
-            <div className="w-[60px] h-[60px] rounded-full bg-[#1f2937] border border-[#374151] shadow-[inset_0_2px_4px_rgba(255,255,255,0.1),0_8px_16px_rgba(0,0,0,0.6)] z-10 cursor-pointer hover:border-orange-500/50 transition-colors"></div>
-            {/* Arrows */}
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 text-orange-500 text-[14px]">▲</div>
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-orange-500 text-[14px]">▼</div>
-            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500 text-[14px]">◀</div>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-orange-500 text-[14px]">▶</div>
-        </div>
-    </div>
-);
+    );
+};
 
 export default function ActiveMissionPage() {
     const { videoStream, isStreaming, isConnecting, streamError, detections } = useDetectionStream();
@@ -91,7 +241,7 @@ export default function ActiveMissionPage() {
     }, []);
 
     const uavIds = drones.map(d => d.id);
-    const { telemetry, positionHistory, homePositions } = useTelemetry(uavIds);
+    const { telemetry, positionHistory, homePositions, publish } = useTelemetry(uavIds);
 
     const selectedDroneObj = drones.length > 0 ? drones[0] : null;
     const selectedUavId = selectedDroneObj?.id;
@@ -102,14 +252,149 @@ export default function ActiveMissionPage() {
     const location = selectedTelemetry?.location || {};
     const vehicleState = selectedTelemetry?.vehicle_state || {};
 
-    const longitude = location.longitude != null ? Number(location.longitude).toFixed(7) : '2.2945';
-    const latitude = location.latitude != null ? Number(location.latitude).toFixed(7) : '48.8584';
-    const heading = location.heading ?? '85';
-    const flightMode = vehicleState.mode || 'AUTO';
-    const altitude = location.altitude != null ? Math.round(location.altitude) : 80;
+    // Gimbal & Camera state from telemetry
+    const gimbalState = selectedTelemetry?.gimbal_state || {};
+    const cameraState = selectedTelemetry?.camera_state || {};
+
+    const longitude = location.longitude != null ? Number(location.longitude).toFixed(7) : 'N/A';
+    const latitude = location.latitude != null ? Number(location.latitude).toFixed(7) : 'N/A';
+    const heading = location.heading ?? 'N/A';
+    const flightMode = vehicleState.mode || 'N/A';
+    const altitude = location.altitude != null ? Math.round(location.altitude) : 'N/A';
 
     // Calculate slider thumb position based on altitude (0 to 100M)
     const altitudePercentage = Math.min(100, Math.max(0, altitude));
+
+    // Gimbal pitch/yaw tracking — use live state as base
+    const gimbalPitchRef = useRef(-20);
+    const gimbalYawRef = useRef(0);
+
+    // Sync refs with live telemetry when available
+    useEffect(() => {
+        if (gimbalState.pitch_deg != null) gimbalPitchRef.current = gimbalState.pitch_deg;
+        if (gimbalState.yaw_deg != null) gimbalYawRef.current = gimbalState.yaw_deg;
+    }, [gimbalState.pitch_deg, gimbalState.yaw_deg]);
+
+    // Photo flash feedback
+    const [photoFlash, setPhotoFlash] = useState(false);
+
+    // Recording state from camera_state telemetry
+    const isRecording = cameraState.recording_label === 'on' || cameraState.recording_state === 1;
+
+    // --- Command handlers ---
+
+    const GIMBAL_STEP = 5; // degrees per tick
+    const PITCH_MIN = -90;
+    const PITCH_MAX = 25;
+
+    const handleGimbalArrow = useCallback((direction) => {
+        if (!selectedUavId) return;
+        let pitch = gimbalPitchRef.current;
+        let yaw = gimbalYawRef.current;
+
+        switch (direction) {
+            case 'up': pitch = Math.min(PITCH_MAX, pitch + GIMBAL_STEP); break;
+            case 'down': pitch = Math.max(PITCH_MIN, pitch - GIMBAL_STEP); break;
+            case 'left': yaw -= GIMBAL_STEP; break;
+            case 'right': yaw += GIMBAL_STEP; break;
+        }
+
+        // Normalize yaw to -180..180
+        if (yaw > 180) yaw -= 360;
+        if (yaw < -180) yaw += 360;
+
+        gimbalPitchRef.current = pitch;
+        gimbalYawRef.current = yaw;
+
+        publish(selectedUavId, 'gimbal_command', {
+            command: 'set_pitch_yaw',
+            pitch_deg: pitch,
+            yaw_deg: yaw,
+            mode: 'follow'
+        });
+    }, [selectedUavId, publish]);
+
+    // Gimbal joystick drag tracking
+    const joystickIntervalRef = useRef(null);
+    const joystickVectorRef = useRef({ x: 0, y: 0 });
+
+    const handleJoystickDrag = useCallback((nx, ny) => {
+        joystickVectorRef.current = { x: nx, y: ny };
+
+        if (!joystickIntervalRef.current) {
+            // Start continuous movement while dragged
+            joystickIntervalRef.current = setInterval(() => {
+                if (!selectedUavId) return;
+                let pitch = gimbalPitchRef.current;
+                let yaw = gimbalYawRef.current;
+
+                // Max speed factor: multiply the [-1, 1] vector by step size
+                const speedMult = GIMBAL_STEP;
+
+                // Note: ny is positive when dragging DOWN, which should pitch DOWN (decrease pitch)
+                pitch = pitch - (joystickVectorRef.current.y * speedMult);
+                yaw = yaw + (joystickVectorRef.current.x * speedMult);
+
+                pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch));
+
+                // Normalize yaw
+                if (yaw > 180) yaw -= 360;
+                if (yaw < -180) yaw += 360;
+
+                gimbalPitchRef.current = pitch;
+                gimbalYawRef.current = yaw;
+
+                publish(selectedUavId, 'gimbal_command', {
+                    command: 'set_pitch_yaw',
+                    pitch_deg: pitch,
+                    yaw_deg: yaw,
+                    mode: 'follow'
+                });
+            }, 100); // 10Hz update while dragging
+        }
+    }, [selectedUavId, publish]);
+
+    const handleJoystickStop = useCallback(() => {
+        if (joystickIntervalRef.current) {
+            clearInterval(joystickIntervalRef.current);
+            joystickIntervalRef.current = null;
+        }
+    }, []);
+
+    // Cleanup joystick interval
+    useEffect(() => {
+        return () => {
+            if (joystickIntervalRef.current) clearInterval(joystickIntervalRef.current);
+        };
+    }, []);
+
+    const handleZoomIn = useCallback(() => {
+        if (!selectedUavId) return;
+        publish(selectedUavId, 'camera_command', { command: 'zoom_in' });
+    }, [selectedUavId, publish]);
+
+    const handleZoomOut = useCallback(() => {
+        if (!selectedUavId) return;
+        publish(selectedUavId, 'camera_command', { command: 'zoom_out' });
+    }, [selectedUavId, publish]);
+
+    const handleZoomStop = useCallback(() => {
+        if (!selectedUavId) return;
+        publish(selectedUavId, 'camera_command', { command: 'zoom_stop' });
+    }, [selectedUavId, publish]);
+
+    const handleToggleRecording = useCallback(() => {
+        if (!selectedUavId) return;
+        publish(selectedUavId, 'camera_command', { command: 'toggle_recording' });
+    }, [selectedUavId, publish]);
+
+    const handleTakePhoto = useCallback(() => {
+        if (!selectedUavId) return;
+        publish(selectedUavId, 'camera_command', { command: 'take_photo' });
+        // Flash feedback
+        setPhotoFlash(true);
+        setTimeout(() => setPhotoFlash(false), 300);
+    }, [selectedUavId, publish]);
 
     return (
         <div
@@ -226,11 +511,20 @@ export default function ActiveMissionPage() {
                         <div className="flex flex-col justify-between w-[40%] pr-6 border-r border-[#2a3240]">
                             {/* Record / Photo */}
                             <div className="flex gap-4">
-                                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[12px] bg-[#111827] border border-red-500/30 text-white text-[13px] font-bold hover:bg-white/5 transition-colors shadow-[0_0_15px_rgba(239,68,68,0.1)]">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
-                                    Record
+                                <button
+                                    onClick={handleToggleRecording}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[12px] bg-[#111827] border text-white text-[13px] font-bold hover:bg-white/5 transition-colors ${isRecording
+                                            ? 'border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.25)]'
+                                            : 'border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+                                        }`}
+                                >
+                                    <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)] ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-red-500'}`}></div>
+                                    {isRecording ? 'Stop' : 'Record'}
                                 </button>
-                                <button className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[12px] bg-[#111827] border border-[#374151] text-white text-[13px] font-bold hover:bg-white/5 transition-colors shadow-sm">
+                                <button
+                                    onClick={handleTakePhoto}
+                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[12px] bg-[#111827] border border-[#374151] text-white text-[13px] font-bold hover:bg-white/5 transition-colors shadow-sm active:bg-white/10"
+                                >
                                     <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" /><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" /></svg>
                                     Photo
                                 </button>
@@ -319,8 +613,21 @@ export default function ActiveMissionPage() {
                 </div>
 
                 {/* 3. D-Pad (Right) */}
-                <DPadControl />
+                <DPadControl
+                    onZoomIn={handleZoomIn}
+                    onZoomOut={handleZoomOut}
+                    onZoomStop={handleZoomStop}
+                    onArrow={handleGimbalArrow}
+                    onJoystickDrag={handleJoystickDrag}
+                    onJoystickStop={handleJoystickStop}
+                    zoomLevel={cameraState.zoom_level}
+                />
             </div>
+
+            {/* Photo Flash Overlay */}
+            {photoFlash && (
+                <div className="fixed inset-0 bg-white/30 z-[9999] pointer-events-none animate-[flashFade_0.3s_ease-out_forwards]" />
+            )}
         </div>
     );
 }

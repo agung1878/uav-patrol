@@ -263,5 +263,30 @@ export default function useTelemetry(uavIds = []) {
         };
     }, [connect, JSON.stringify(uavIds)]);
 
-    return { telemetry, isConnected, error, positionHistory, homePositions, missionStatusVersion };
+    /**
+     * Publish a command through the telemetry WebSocket.
+     * Used for gimbal_command, camera_command, etc.
+     *
+     * @param {number} uavId - Target UAV ID
+     * @param {string} metric - e.g. 'gimbal_command', 'camera_command'
+     * @param {object} payload - Command payload
+     */
+    const publish = useCallback((uavId, metric, payload) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+            console.warn('[Telemetry] Cannot publish — WebSocket not connected');
+            return false;
+        }
+        const msg = JSON.stringify({
+            type: 'publish',
+            uav_id: uavId,
+            kind: 'telemetry',
+            metric,
+            payload
+        });
+        wsRef.current.send(msg);
+        console.log(`[Telemetry] Published ${metric}:`, payload);
+        return true;
+    }, []);
+
+    return { telemetry, isConnected, error, positionHistory, homePositions, missionStatusVersion, publish };
 }

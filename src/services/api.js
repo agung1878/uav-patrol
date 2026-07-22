@@ -2,6 +2,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://api-xflight.ku
 export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://api-xflight.kumalabs.tech';
 export const STREAM_API_URL = import.meta.env.VITE_STREAM_API_URL || 'http://172.15.1.15:8000';
 export const WHEP_URL = import.meta.env.VITE_WHEP_URL || 'http://172.15.1.15:8889/stream/cam2/whep';
+export const WHEP_DOCK_URL = import.meta.env.VITE_WHEP_DOCK_URL;
+export const ENABLE_DOCK_STREAM = import.meta.env.VITE_ENABLE_DOCK_STREAM === 'true';
 export const DETECTIONS_WS_URL = import.meta.env.VITE_DETECTIONS_WS_URL || 'ws://172.15.1.15:8000/api/ws/detections';
 
 export const authService = {

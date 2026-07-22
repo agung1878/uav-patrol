@@ -95,7 +95,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             {!isStreaming && !isConnecting && (
                 <div
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                    style={{ backgroundImage: `url('/src/assets/img_dummy.png')` }}
+                    style={{ backgroundImage: `url('/src/assets/img_stream_na.png')` }}
                 />
             )}
 

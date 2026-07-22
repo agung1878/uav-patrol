@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { WHEP_URL, DETECTIONS_WS_URL } from '../../services/api';
 
 const DUMMY_STREAM = import.meta.env.VITE_DUMMY_STREAM === 'true';
+const ENABLE_STREAM = import.meta.env.VITE_ENABLE_STREAM === 'true';
 
 /**
  * Custom hook that connects to the detections WebSocket and auto-manages WebRTC.
@@ -191,10 +192,16 @@ export default function useDetectionStream() {
         };
     }, [startWebRTC]);
 
-    // Connect WS on mount (or skip entirely if dummy), cleanup on unmount
+    // Connect WS on mount (or start WebRTC directly if dummy), cleanup on unmount
     useEffect(() => {
+        if (!ENABLE_STREAM) {
+            console.log('[DetectionStream] ENABLE_STREAM is false. Skipping WS and WebRTC.');
+            return;
+        }
+
         if (DUMMY_STREAM) {
-            console.log('[DetectionStream] DUMMY_STREAM is true. Skipping WS and WebRTC.');
+            console.log('[DetectionStream] DUMMY_STREAM is true. Starting WebRTC directly.');
+            startWebRTC();
         } else {
             connectWS();
         }
@@ -208,7 +215,7 @@ export default function useDetectionStream() {
             }
             stopWebRTC();
         };
-    }, [connectWS, stopWebRTC]);
+    }, [connectWS, startWebRTC, stopWebRTC]);
 
     return { videoStream, isStreaming, isConnecting, streamError, detections };
 }
