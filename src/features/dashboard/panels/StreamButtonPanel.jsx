@@ -24,7 +24,7 @@ export default function StreamButtonPanel({ onLaunchClick, isStreaming }) {
         >
 
             <img 
-                src="/src/assets/btn_launch.png" 
+                src="/images/btn_launch.png" 
                 alt="Stream" 
                 className={`h-[281px] w-[246px] object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] transition-all ${
                     isStreaming ? 'opacity-90 saturate-[1.5] hue-rotate-[130deg] scale-[1.02] animate-pulse' : ''

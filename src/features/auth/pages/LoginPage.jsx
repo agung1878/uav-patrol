@@ -36,7 +36,7 @@ export default function LoginPage() {
         <div className="min-h-screen bg-[#111620] flex items-center justify-center relative overflow-hidden font-sans">
             {/* Background design elements to mimic the network/tech feel */}
             <div className="absolute inset-0 pointer-events-none opacity-30">
-                <div className="absolute inset-0" style={{ backgroundImage: `url('/src/assets/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+                <div className="absolute inset-0" style={{ backgroundImage: `url('/images/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
 
             </div>
 
@@ -46,7 +46,7 @@ export default function LoginPage() {
                 <div className="flex flex-col items-center text-center">
                     <div className="w-[200px] h-[140px] mb-4 relative flex items-center justify-center">
                         {/* Custom Drone SVG Logo mimicking the image */}
-                        <img src="/src/assets/icon_app.png" alt="Drone" className="w-full h-full" />
+                        <img src="/images/icon_app.png" alt="Drone" className="w-full h-full" />
                     </div>
                     <h1 className="text-3xl font-extrabold tracking-widest text-[#ea580c] uppercase mb-1">
                         UAV Patrol
@@ -98,7 +98,7 @@ export default function LoginPage() {
                                 {isLoading ? (
                                     <span className="relative z-10 py-[6px]">Logging in...</span>
                                 ) : (
-                                    <img src="/src/assets/btn_login.png" alt="Login" className="w-full h-full" />
+                                    <img src="/images/btn_login.png" alt="Login" className="w-full h-full" />
                                 )}
                             </button>
                         </div>

@@ -105,7 +105,7 @@ export default function DroneInfoPanel({
                         </div>
                     )}
                 </div>
-                <img src="/src/assets/ic_drone.png" alt="Drone" className="h-10 w-auto object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] invert brightness-75 sepia-[0.5] hue-rotate-180 saturate-50" />
+                <img src="/images/ic_drone.png" alt="Drone" className="h-10 w-auto object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] invert brightness-75 sepia-[0.5] hue-rotate-180 saturate-50" />
             </div>
 
             {/* Battery Section */}

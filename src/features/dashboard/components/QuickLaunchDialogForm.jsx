@@ -22,7 +22,7 @@ const dockIcon = new L.DivIcon({
 const createDroneIcon = (heading) => new L.DivIcon({
     className: 'custom-drone-icon',
     html: `
-        <img src="/src/assets/ic_drone.png" alt="Drone" class="w-24 h-24 object-contain" style="transform: rotate(${heading || 0}deg);" />
+        <img src="/images/ic_drone.png" alt="Drone" class="w-24 h-24 object-contain" style="transform: rotate(${heading || 0}deg);" />
     `,
     iconSize: [96, 96],
     iconAnchor: [48, 48]
@@ -589,7 +589,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                             onClick={onClose}
                             className="flex-1 h-[48px] rounded flex items-center justify-center transition-all hover:from-[#dc2626] hover:to-[#991b1b] relative overflow-hidden"
                         >
-                            <img src="/src/assets/btn_cancel_mission_2.png" alt="Cancel" />
+                            <img src="/images/btn_cancel_mission_2.png" alt="Cancel" />
                         </button>
 
                         {/* Orange Launch Button */}
@@ -609,7 +609,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                             }}
                             className="flex-1 h-[48px] rounded flex items-center justify-center transition-all hover:from-[#f97316] hover:to-[#c2410c] relative overflow-hidden"
                         >
-                            <img src="/src/assets/btn_launch_dg.png" alt="Launch" />
+                            <img src="/images/btn_launch_dg.png" alt="Launch" />
                         </button>
                     </div>
 

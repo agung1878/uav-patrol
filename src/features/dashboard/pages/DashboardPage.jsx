@@ -172,7 +172,7 @@ export default function DashboardPage() {
         <>
             <div
                 className="p-[28px] flex flex-row gap-[28px] w-full h-[calc(100vh-104px)] overflow-hidden"
-                style={{ backgroundImage: `url('/src/assets/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                style={{ backgroundImage: `url('/images/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
             >
                 {/* Column 1 */}
                 <div className="flex-1 flex flex-col gap-[28px] min-w-0">

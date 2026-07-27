@@ -2,15 +2,15 @@ import React, { useState } from 'react';
 
 // Icons for the Mission Types
 const LaunchIcon = () => (
-    <img src="/src/assets/icon_launch.png" alt="Launch" width="64" height="64" />
+    <img src="/images/icon_launch.png" alt="Launch" width="64" height="64" />
 );
 
 const ROIIcon = () => (
-    <img src="/src/assets/icon_roi.png" alt="ROI" width="64" height="64" />
+    <img src="/images/icon_roi.png" alt="ROI" width="64" height="64" />
 );
 
 const SpiralIcon = () => (
-    <img src="/src/assets/icon_spiral.png" alt="Spiral" width="64" height="64" />
+    <img src="/images/icon_spiral.png" alt="Spiral" width="64" height="64" />
 );
 
 
@@ -67,13 +67,13 @@ export default function QuickLaunchDialog({ isOpen, onClose, onConfirm }) {
                         onClick={onClose}
                         className="flex-1 hover:from-red-500 hover:to-red-700"
                     >
-                        <img src="/src/assets/btn_cancel_mission_2.png" alt="Cancel" />
+                        <img src="/images/btn_cancel_mission_2.png" alt="Cancel" />
                     </button>
                     <button
                         onClick={() => onConfirm(selectedType)}
                         className="flex-1 hover:from-orange-400 hover:to-orange-600"
                     >
-                        <img src="/src/assets/btn_set_mission.png" alt="Set Mission" />
+                        <img src="/images/btn_set_mission.png" alt="Set Mission" />
                     </button>
                 </div>
 

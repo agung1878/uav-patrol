@@ -32,7 +32,7 @@ const DockCamPanel = () => {
 
             {/* Placeholder (shown when NOT streaming) */}
             {!isStreaming && !isConnecting && (
-                <div className="absolute inset-0 bg-cover bg-center opacity-70" style={{ backgroundImage: `url('/src/assets/dock_cam_placeholder.png')`, backgroundColor: '#111' }} />
+                <div className="absolute inset-0 bg-cover bg-center opacity-70" style={{ backgroundImage: `url('/images/dock_cam_placeholder.png')`, backgroundColor: '#111' }} />
             )}
 
             {/* Connecting Overlay */}
@@ -399,7 +399,7 @@ export default function ActiveMissionPage() {
     return (
         <div
             className="p-[28px] flex flex-col gap-[20px] w-full h-[calc(100vh-104px)] overflow-hidden"
-            style={{ backgroundImage: `url('/src/assets/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+            style={{ backgroundImage: `url('/images/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
         >
             {/* UPPER AREA: Main Video/Map + Right Sidebar */}
             <div className="flex-1 flex gap-[20px] min-h-0">
@@ -549,7 +549,7 @@ export default function ActiveMissionPage() {
 
                             {/* Abort Mission */}
                             <button className="w-full h-[46px] hover:brightness-110 tracking-[0.05em] text-[14px] rounded-[10px] transition-all active:scale-[0.98] overflow-hidden relative">
-                                <img src="/src/assets/btn_abort_mission.png" alt="Abort Mission" className="absolute inset-0 w-full h-full object-cover" />
+                                <img src="/images/btn_abort_mission.png" alt="Abort Mission" className="absolute inset-0 w-full h-full object-cover" />
                             </button>
                         </div>
 

@@ -248,7 +248,7 @@ export default function HistoryPage() {
         <>
             <div
                 className="p-[28px] flex gap-[20px] w-full h-[calc(100vh-104px)] overflow-hidden"
-                style={{ backgroundImage: `url('/src/assets/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                style={{ backgroundImage: `url('/images/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
             >
                 {/* LEFT PANE: Mission History List */}
                 <div className="w-[60%] flex flex-col gap-5 rounded-[24px] border border-[#2a3240] shadow-[0_10px_30px_rgba(0,0,0,0.5)] bg-[#151a25]/95 backdrop-blur p-6">
@@ -486,7 +486,7 @@ export default function HistoryPage() {
                                 playsInline
                             />
                         ) : (
-                            <div className="absolute inset-0 bg-cover bg-center opacity-80" style={{ backgroundImage: `url('/src/assets/dock_cam_placeholder.png')` }}></div>
+                            <div className="absolute inset-0 bg-cover bg-center opacity-80" style={{ backgroundImage: `url('/images/dock_cam_placeholder.png')` }}></div>
                         )}
 
                         {/* Loading overlay */}

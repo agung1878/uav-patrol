@@ -121,7 +121,7 @@ export default function AppHeader() {
             <div className="flex items-center space-x-10 h-full">
                 {/* Branding */}
                 <div className="flex items-center space-x-3">
-                    <img src="/src/assets/img_logo.png" alt="Logo" className="w-[107.5px] h-[59.9px]" />
+                    <img src="/images/img_logo.png" alt="Logo" className="w-[107.5px] h-[59.9px]" />
                     <div className="flex flex-col mb-1 text-[#ea580c] font-black tracking-widest leading-[1.1] uppercase">
                         <span className="text-[15px]">UAV</span>
                         <span className="text-[15px]">PATROL</span>

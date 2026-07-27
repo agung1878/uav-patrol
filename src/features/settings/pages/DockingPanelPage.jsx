@@ -4,14 +4,14 @@ export default function DockingPanelPage() {
     return (
         <div
             className="w-full h-[calc(100vh-104px)] overflow-hidden flex items-center justify-center p-[28px]"
-            style={{ backgroundImage: `url('/src/assets/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+            style={{ backgroundImage: `url('/images/img_background.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}
         >
             <div className="w-full max-w-[1200px] flex items-center justify-between gap-[100px]">
 
                 {/* LEFT SIDE: Logo & Name */}
                 <div className="flex flex-col items-center justify-center flex-1">
                     <img
-                        src="/src/assets/icon_app.png"
+                        src="/images/icon_app.png"
                         alt="UAV Patrol Logo"
                         className="w-[300px] h-[200px] object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] filter brightness-110"
                     />

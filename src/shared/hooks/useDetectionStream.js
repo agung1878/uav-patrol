@@ -202,6 +202,7 @@ export default function useDetectionStream() {
         if (DUMMY_STREAM) {
             console.log('[DetectionStream] DUMMY_STREAM is true. Starting WebRTC directly.');
             startWebRTC();
+            connectWS();
         } else {
             connectWS();
         }

@@ -24,7 +24,7 @@ const createDroneIcon = (heading) => new L.DivIcon({
     className: 'custom-drone-icon',
     html: `
         <div style="transform: rotate(${heading || 0}deg); transition: transform 0.5s ease;">
-            <img src="/src/assets/ic_drone.png" alt="Drone" class="w-24 h-24 object-contain" />
+            <img src="/images/ic_drone.png" alt="Drone" class="w-24 h-24 object-contain" />
         </div>
     `,
     iconSize: [96, 96],
@@ -511,10 +511,10 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[400] flex flex-col items-center">
                         <div className="flex space-x-4 mt-2">
                             <button className="bg-transparent hover:brightness-110 transition flex items-center space-x-2">
-                                <img src="/src/assets/btn_cancel_mission.png" alt="" />
+                                <img src="/images/btn_cancel_mission.png" alt="" />
                             </button>
                             <button className="bg-transparent hover:brightness-110 transition">
-                                <img src="/src/assets/btn_set_schedule.png" alt="" />
+                                <img src="/images/btn_set_schedule.png" alt="" />
                             </button>
                         </div>
                     </div>

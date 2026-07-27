@@ -13,7 +13,7 @@ const CompassWidget = ({ heading = 0, isSmallPanel = false }) => (
             <div className="absolute h-full w-[1px] bg-gray-500/50"></div>
             {/* Center Arrow */}
             <img
-                src="/src/assets/icon_nav_up.png"
+                src="/images/icon_nav_up.png"
                 alt="Compass"
                 className="absolute w-8 h-8 object-contain transition-transform duration-300"
                 style={{ transform: `rotate(${heading}deg)` }}
@@ -95,7 +95,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             {!isStreaming && !isConnecting && (
                 <div
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                    style={{ backgroundImage: `url('/src/assets/img_stream_na.png')` }}
+                    style={{ backgroundImage: `url('/images/img_stream_na.png')` }}
                 />
             )}
 

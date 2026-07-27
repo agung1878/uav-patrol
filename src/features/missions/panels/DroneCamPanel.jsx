@@ -36,7 +36,7 @@ export default function DroneCamPanel() {
         <div className="relative w-full h-full bg-black rounded-[24px] overflow-hidden border border-[#2a3240] shadow-lg">
             {/* Main Video Feed (Placeholder Image) */}
             <img
-                src="/src/assets/img_dummy.png"
+                src="/images/img_dummy.png"
                 alt="Video Feed"
                 className="w-full h-full object-cover opacity-80"
             />
