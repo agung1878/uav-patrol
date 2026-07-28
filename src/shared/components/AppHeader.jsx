@@ -172,8 +172,8 @@ export default function AppHeader() {
                                 >
                                     User Management
                                 </NavLink>
-                                <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
-                                <NavLink
+                                {/* <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div> */}
+                                {/* <NavLink
                                     to="/docking-panel"
                                     onClick={() => setIsSettingsOpen(false)}
                                     className={({ isActive }) => `
@@ -182,7 +182,7 @@ export default function AppHeader() {
                                     `}
                                 >
                                     Docking Panel
-                                </NavLink>
+                                </NavLink> */}
                                 <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
                                 <button
                                     onClick={handleLogout}

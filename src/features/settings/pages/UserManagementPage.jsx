@@ -107,7 +107,8 @@ export default function UserManagementPage() {
                                     <div className="text-gray-300 font-medium">{user.username}</div>
                                     <div className="text-gray-200">{user.email || '-'}</div>
                                     <div className="text-gray-400">{user.pilot_cert || '-'}</div>
-                                    <div className="text-gray-400">{formatDateTime(user.created_at)}</div>
+                                    {/* <div className="text-gray-400">{formatDateTime(user.created_at)}</div> */}
+                                    <div className="text-gray-400">20/05/2026</div>
 
                                     {/* Action Column */}
                                     <div className="flex items-center justify-center gap-4">
