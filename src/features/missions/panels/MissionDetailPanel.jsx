@@ -24,7 +24,7 @@ export default function MissionDetailPanel({
     const [takeoffAltitude, setTakeoffAltitude] = useState('');
     const [takeoffHoldDuration, setTakeoffHoldDuration] = useState('');
     const [timeMode, setTimeMode] = useState('One time');
-    const [scheduleDate, setScheduleDate] = useState('');
+    const [scheduleDate, setScheduleDate] = useState('2026-05-20');
     const [scheduleTime, setScheduleTime] = useState('');
 
     // ROI fields
@@ -36,8 +36,8 @@ export default function MissionDetailPanel({
     const [recurrenceInterval, setRecurrenceInterval] = useState('1');
 
     // Daily fields
-    const [dailyStartDate, setDailyStartDate] = useState('');
-    const [dailyEndDate, setDailyEndDate] = useState('');
+    const [dailyStartDate, setDailyStartDate] = useState('2026-05-20');
+    const [dailyEndDate, setDailyEndDate] = useState('2026-05-20');
     const [dailyRepeatTimes, setDailyRepeatTimes] = useState(['09:00']);
 
     // Weekly fields

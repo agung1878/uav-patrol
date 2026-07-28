@@ -229,8 +229,10 @@ export default function AppHeader() {
                         {timeStr}
                     </span>
                     <div className="flex flex-col text-[9px] uppercase tracking-wider text-gray-300 leading-[1.2] ml-3 mt-1">
-                        <span>{dayStr}</span>
-                        <span>{dateStr}</span>
+                        {/* <span>{dayStr}</span>
+                        <span>{dateStr}</span> */}
+                        <span>Wed</span>
+                        <span>20 May</span>
                     </div>
                 </div>
 
