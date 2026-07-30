@@ -508,7 +508,7 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                     </div>
 
                     {/* Add Mode: Bottom Controls Overlay */}
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[400] flex flex-col items-center">
+                    {/* <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[400] flex flex-col items-center">
                         <div className="flex space-x-4 mt-2">
                             <button className="bg-transparent hover:brightness-110 transition flex items-center space-x-2">
                                 <img src="/images/btn_cancel_mission.png" alt="" />
@@ -517,7 +517,7 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                                 <img src="/images/btn_set_schedule.png" alt="" />
                             </button>
                         </div>
-                    </div>
+                    </div> */}
                 </>
             )}
 

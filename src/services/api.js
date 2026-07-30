@@ -210,7 +210,7 @@ export const missionService = {
         const token = localStorage.getItem('authToken');
         if (!token) throw new Error('No authentication token found');
 
-        const response = await fetch(`${API_BASE_URL}/mission-history?page=${page}&limit=${limit}`, {
+        const response = await fetch(`${API_BASE_URL}/mission-historynantiinibenerinlagi?page=${page}&limit=${limit}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -218,7 +218,8 @@ export const missionService = {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || 'Failed to fetch mission history');
+            // throw new Error(errorData.error || 'Failed to fetch mission history');
+            throw new Error(errorData.error || 'Data histories not available');
         }
 
         return response.json();
