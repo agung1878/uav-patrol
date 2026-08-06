@@ -223,6 +223,25 @@ export const missionService = {
         }
 
         return response.json();
+    },
+
+    deleteMissionOccurrence: async (missionId, runAt) => {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_BASE_URL}/missions/${missionId}/occurrences?run_at=${encodeURIComponent(runAt)}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to delete mission occurrence');
+        }
+
+        return response.json();
     }
 };
 

@@ -5,8 +5,27 @@ export default function WaypointSelectionPanel({
     waypointsData = {},
     onWaypointDataChange,
     onRemoveWaypoint,
-    onCancel
+    onCancel,
+    onImportWaypoints
 }) {
+    const fileInputRef = React.useRef(null);
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const parsed = JSON.parse(event.target.result);
+                if (onImportWaypoints) onImportWaypoints(parsed);
+            } catch (err) {
+                alert("Invalid JSON file");
+            }
+            e.target.value = '';
+        };
+        reader.readAsText(file);
+    };
+
     const getPointData = (id) => waypointsData[id] || { altitude: 15, camera_tilt: -45, camera_yaw: 0, action: 'Take Picture', action_duration: 5 };
 
     return (
@@ -32,7 +51,17 @@ export default function WaypointSelectionPanel({
             {/* Waypoints List */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
                 {waypoints.length === 0 ? (
-                    <p className="text-gray-500 text-xs italic text-center mt-10">Click on the map to add waypoints</p>
+                    <div className="flex flex-col items-center justify-center mt-10 gap-2">
+                        <p className="text-gray-500 text-xs italic text-center">Click on the map to add waypoints</p>
+                        <p className="text-gray-600 text-[10px] italic text-center">or</p>
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="text-[#ea580c] hover:text-[#ff782e] text-[11px] font-semibold underline transition-colors"
+                        >
+                            import a waypoints JSON
+                        </button>
+                        <input type="file" accept=".json" ref={fileInputRef} onChange={handleFileChange} className="hidden" />
+                    </div>
                 ) : (
                     waypoints.map((wp, i) => {
                         const data = getPointData(wp.id);

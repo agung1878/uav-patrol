@@ -5,6 +5,7 @@ import MissionListPanel from '../panels/MissionListPanel';
 import DroneCamPanel from '../panels/DroneCamPanel';
 import MissionDetailPanel from '../panels/MissionDetailPanel';
 import ConflictDialog from '../components/ConflictDialog';
+import CustomDialog from '../../../shared/components/CustomDialog';
 import { uavService, missionService } from '../../../services/api';
 import useTelemetry from '../../../shared/hooks/useTelemetry';
 
@@ -33,6 +34,11 @@ export default function MissionPage() {
     const [showHistoryGuard, setShowHistoryGuard] = useState(false);
     const [historyGuardData, setHistoryGuardData] = useState(null);
     const [submitSuccess, setSubmitSuccess] = useState('');
+
+    // Import guard state
+    const [importDialogState, setImportDialogState] = useState({ isOpen: false, message: '' });
+    // Export state
+    const [exportDialogState, setExportDialogState] = useState({ isOpen: false, fileName: '' });
 
     // Fetch drones on mount
     useEffect(() => {
@@ -95,6 +101,92 @@ export default function MissionPage() {
     const handleClearWaypoints = () => {
         setWaypoints([]);
         setWaypointsData({});
+    };
+
+    const getDistanceFromLatLonInMeters = (lat1, lon1, lat2, lon2) => {
+        const R = 6371e3; // metres
+        const φ1 = lat1 * Math.PI/180;
+        const φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180;
+        const Δλ = (lon2-lon1) * Math.PI/180;
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    };
+
+    const handleImportWaypoints = (importedData) => {
+        if (!Array.isArray(importedData)) {
+            setImportDialogState({ isOpen: true, message: "JSON must be an array of waypoints" });
+            return;
+        }
+
+        const maxRange = selectedDroneObj?.max_range_meter || 1800;
+        const dronePosition = selectedTelemetry?.location ? [selectedTelemetry.location.latitude, selectedTelemetry.location.longitude] : null;
+        const dockPosition = selectedHome || null;
+        const circleCenter = dockPosition || dronePosition;
+
+        const newWaypoints = [];
+        const newWaypointsData = {};
+        let currentId = 1;
+        
+        for (const wp of importedData) {
+            if (wp.latitude !== undefined && wp.longitude !== undefined) {
+                if (circleCenter) {
+                    const distance = getDistanceFromLatLonInMeters(circleCenter[0], circleCenter[1], wp.latitude, wp.longitude);
+                    if (distance > maxRange) {
+                        setImportDialogState({ 
+                            isOpen: true, 
+                            message: `Import failed: Waypoint ${currentId} is outside the allowed drone range fence (${Math.round(distance)}m > ${maxRange}m).`
+                        });
+                        return; // Stop import entirely
+                    }
+                }
+
+                newWaypoints.push({ id: currentId, lat: wp.latitude, lng: wp.longitude });
+                newWaypointsData[currentId] = {
+                    altitude: wp.altitude ?? 15,
+                    camera_tilt: wp.camera_tilt ?? -45,
+                    camera_yaw: wp.camera_yaw ?? 0,
+                    action: wp.action || 'Take Picture',
+                    action_duration: wp.action_duration ?? 5
+                };
+                currentId++;
+            }
+        }
+        
+        setWaypoints(newWaypoints);
+        setWaypointsData(newWaypointsData);
+    };
+
+    const handleExportWaypoints = () => {
+        setExportDialogState({ isOpen: true, fileName: `waypoints_${Date.now()}` });
+    };
+
+    const confirmExportWaypoints = () => {
+        const exportData = waypoints.map((wp) => {
+            const data = waypointsData[wp.id] || {};
+            return {
+                latitude: wp.lat,
+                longitude: wp.lng,
+                altitude: parseFloat(data.altitude) || 15.0,
+                camera_tilt: data.camera_tilt !== undefined ? parseFloat(data.camera_tilt) : -45.0,
+                camera_yaw: data.camera_yaw !== undefined ? parseFloat(data.camera_yaw) : 0.0,
+                action: data.action || 'Take Picture',
+                action_duration: parseInt(data.action_duration) || 5
+            };
+        });
+        
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const finalName = exportDialogState.fileName.trim() || 'waypoints';
+        a.download = finalName.endsWith('.json') ? finalName : `${finalName}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setExportDialogState({ isOpen: false, fileName: '' });
     };
 
     const handleCancelAddMission = () => {
@@ -360,6 +452,7 @@ export default function MissionPage() {
                                 onWaypointDataChange={handleWaypointDataChange}
                                 onRemoveWaypoint={handleRemoveWaypoint}
                                 onCancel={handleCancelAddMission}
+                                onImportWaypoints={handleImportWaypoints}
                             />
                         </div>
                         {/* Mission Detail Panel */}
@@ -374,6 +467,7 @@ export default function MissionPage() {
                                 isSubmitting={isSubmitting}
                                 submitError={submitError}
                                 submitSuccess={submitSuccess}
+                                onExportWaypoints={handleExportWaypoints}
                             />
                         </div>
                     </>
@@ -429,6 +523,70 @@ export default function MissionPage() {
                     </div>
                 </div>
             )}
+
+            {/* Import Guard Dialog */}
+            <CustomDialog
+                isOpen={importDialogState.isOpen}
+                onClose={() => setImportDialogState({ isOpen: false, message: '' })}
+                title="Import Blocked"
+                footer={
+                    <button
+                        onClick={() => setImportDialogState({ isOpen: false, message: '' })}
+                        className="px-4 py-2 text-sm font-semibold bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/50 hover:bg-[#3b82f6]/20 rounded transition-colors"
+                    >
+                        OK
+                    </button>
+                }
+            >
+                <div className="flex items-start gap-3">
+                    <div className="mt-1 w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                    <div>
+                        <p className="text-gray-200">{importDialogState.message}</p>
+                        <p className="text-xs text-gray-500 mt-2">Please edit your JSON file to keep all waypoints within the drone's operational radius.</p>
+                    </div>
+                </div>
+            </CustomDialog>
+            {/* Export Guard Dialog */}
+            <CustomDialog
+                isOpen={exportDialogState.isOpen}
+                onClose={() => setExportDialogState({ isOpen: false, fileName: '' })}
+                title="Export Waypoints"
+                footer={
+                    <div className="flex gap-2 justify-end w-full">
+                        <button
+                            onClick={() => setExportDialogState({ isOpen: false, fileName: '' })}
+                            className="px-4 py-2 text-sm font-semibold bg-transparent text-gray-400 hover:text-white transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmExportWaypoints}
+                            className="px-4 py-2 text-sm font-semibold bg-[#ea580c] hover:bg-[#ff782e] text-white rounded transition-colors"
+                        >
+                            Save
+                        </button>
+                    </div>
+                }
+            >
+                <div className="flex flex-col gap-3">
+                    <p className="text-gray-300 text-sm">Please enter a name for the JSON file:</p>
+                    <div className="h-[40px] bg-[#2d3745] border border-[#3b4452] rounded shadow-inner flex items-center px-3 focus-within:border-[#ea580c] transition-colors w-full">
+                        <input
+                            type="text"
+                            value={exportDialogState.fileName}
+                            onChange={(e) => setExportDialogState({ ...exportDialogState, fileName: e.target.value })}
+                            className="bg-transparent text-gray-100 text-[13px] outline-none w-full"
+                            placeholder="waypoints_name"
+                            autoFocus
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') confirmExportWaypoints();
+                            }}
+                        />
+                    </div>
+                </div>
+            </CustomDialog>
         </div>
     );
 }

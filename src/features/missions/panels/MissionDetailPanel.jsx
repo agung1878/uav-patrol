@@ -18,7 +18,8 @@ export default function MissionDetailPanel({
     onSubmit,
     isSubmitting = false,
     submitError = '',
-    submitSuccess = ''
+    submitSuccess = '',
+    onExportWaypoints
 }) {
     const [missionName, setMissionName] = useState('');
     const [takeoffAltitude, setTakeoffAltitude] = useState('');
@@ -447,28 +448,44 @@ export default function MissionDetailPanel({
                 )}
 
                 {/* Submit Button */}
-                <button
-                    onClick={handleSubmit}
-                    disabled={isSubmitting || waypointsCount === 0}
-                    className={`w-full h-[44px] rounded-[4px] text-white text-[14px] font-bold tracking-wide shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${isSubmitting || waypointsCount === 0
-                        ? 'bg-gray-600 cursor-not-allowed opacity-60'
-                        : 'bg-gradient-to-b from-[#ea580c] to-[#9c3804] hover:brightness-110'
-                        }`}
-                >
-                    {isSubmitting ? (
-                        <>
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            Submitting...
-                        </>
-                    ) : (
-                        <>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
-                            </svg>
-                            Register Mission
-                        </>
-                    )}
-                </button>
+                <div className="flex flex-col gap-3">
+                    <button
+                        onClick={handleSubmit}
+                        disabled={isSubmitting || waypointsCount === 0}
+                        className={`w-full h-[44px] rounded-[4px] text-white text-[14px] font-bold tracking-wide shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${isSubmitting || waypointsCount === 0
+                            ? 'bg-gray-600 cursor-not-allowed opacity-60'
+                            : 'bg-gradient-to-b from-[#ea580c] to-[#9c3804] hover:brightness-110'
+                            }`}
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                Submitting...
+                            </>
+                        ) : (
+                            <>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" />
+                                </svg>
+                                Register Mission
+                            </>
+                        )}
+                    </button>
+
+                    {/* Export Waypoints Button */}
+                    <button
+                        onClick={onExportWaypoints}
+                        disabled={waypointsCount === 0}
+                        className={`w-full h-[40px] rounded-[4px] text-gray-200 text-[13px] font-semibold tracking-wide border border-[#3b4452] bg-[#2d3745] hover:bg-[#3b4452] hover:text-white transition-colors flex items-center justify-center gap-2 ${waypointsCount === 0 ? 'opacity-50 cursor-not-allowed hover:bg-[#2d3745]' : ''}`}
+                    >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Export Waypoints
+                    </button>
+                </div>
             </div>
         </div>
     );

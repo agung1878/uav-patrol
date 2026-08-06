@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { missionService } from '../../../services/api';
+import CustomDialog from '../../../shared/components/CustomDialog';
 
 export default function MissionListPanel({ onAddMission, onSelectMission, refreshKey = 0 }) {
     const navigate = useNavigate();
@@ -8,6 +9,8 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
     const [loading, setLoading] = useState(true);
     const [totalMissions, setTotalMissions] = useState(0);
     const [activeTab, setActiveTab] = useState('today');
+    const [localRefresh, setLocalRefresh] = useState(0);
+    const [dialogState, setDialogState] = useState({ isOpen: false, type: '', mission: null, message: '', runAt: '' });
 
     useEffect(() => {
         const fetchMissions = async () => {
@@ -50,7 +53,7 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
         };
 
         fetchMissions();
-    }, [refreshKey, activeTab]);
+    }, [refreshKey, activeTab, localRefresh]);
 
     const handleRowClick = (mission) => {
         if (mission.status === 'In Progress') {
@@ -59,6 +62,38 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
         // Notify parent to fetch & display mission detail on map
         if (onSelectMission) {
             onSelectMission(mission.id);
+        }
+    };
+
+    const handleDeleteClick = (e, mission) => {
+        e.stopPropagation();
+        setDialogState({
+            isOpen: true,
+            type: 'confirm_delete',
+            mission: mission,
+            message: `Are you sure you want to delete occurrence for mission "${mission.name}" at ${mission.runDate}?`
+        });
+    };
+
+    const confirmDelete = async () => {
+        const { mission } = dialogState;
+        try {
+            const res = await missionService.deleteMissionOccurrence(mission.id, mission.runAt);
+            setDialogState({
+                isOpen: true,
+                type: 'delete_success',
+                mission: null,
+                message: res.message,
+                runAt: res.run_at
+            });
+            setLocalRefresh(prev => prev + 1);
+        } catch (err) {
+            setDialogState({
+                isOpen: true,
+                type: 'delete_error',
+                mission: null,
+                message: err.message
+            });
         }
     };
 
@@ -98,14 +133,15 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
 
             {/* Horizontal Scroll Wrapper */}
             <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar bg-[#1c222c] border border-[#2a3240] rounded-xl p-3">
-                <div className="min-w-[600px] h-full flex flex-col">
+                <div className="min-w-[650px] h-full flex flex-col">
                     {/* Table Header */}
-                    <div className="grid grid-cols-[1.5fr_2fr_1fr_1.5fr_1.5fr] gap-2 text-[10px] font-bold text-gray-500 border-b border-[#2a3240] pb-2 mb-2 uppercase tracking-widest px-2">
+                    <div className="grid grid-cols-[1.5fr_2fr_1fr_1.5fr_1fr_30px] gap-2 text-[10px] font-bold text-gray-500 border-b border-[#2a3240] pb-2 mb-2 uppercase tracking-widest px-2">
                         <div className="text-left">Created Date</div>
                         <div className="text-left">Mission Name</div>
                         <div className="text-center">Status</div>
                         <div className="text-left">Run At</div>
-                        <div className="text-right pr-2">Type</div>
+                        <div className="text-right">Type</div>
+                        <div></div>
                     </div>
 
                     {/* Table Body */}
@@ -122,7 +158,7 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
                             missions.map((mission) => (
                                 <div
                                     key={mission.id + '_' + mission.runAt}
-                                    className={`grid grid-cols-[1.5fr_2fr_1fr_1.5fr_1.5fr] gap-2 items-center text-xs py-2.5 px-2 rounded-lg transition-all cursor-pointer ${mission.active ? 'bg-[#3b82f6]/10 border border-[#3b82f6]/30' : 'hover:bg-[#202834]'}`}
+                                    className={`grid grid-cols-[1.5fr_2fr_1fr_1.5fr_1fr_30px] gap-2 items-center text-xs py-2.5 px-2 rounded-lg transition-all cursor-pointer ${mission.active ? 'bg-[#3b82f6]/10 border border-[#3b82f6]/30' : 'hover:bg-[#202834]'}`}
                                     onClick={() => handleRowClick(mission)}
                                 >
                                     <div className="text-gray-400 leading-relaxed whitespace-pre-line text-[10px] text-left">
@@ -137,8 +173,22 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
                                     <div className="text-gray-400 leading-relaxed whitespace-pre-line text-[10px] text-left">
                                         {mission.runDate}
                                     </div>
-                                    <div className="text-gray-500 text-[10px] uppercase font-bold text-right pr-2 tracking-wider">
+                                    <div className="text-gray-500 text-[10px] uppercase font-bold text-right tracking-wider">
                                         {mission.scheduleType}
+                                    </div>
+                                    <div className="flex justify-center items-center">
+                                        {mission.status === 'Waiting' && (
+                                            <button
+                                                onClick={(e) => handleDeleteClick(e, mission)}
+                                                className="text-gray-500 hover:text-red-500 transition-colors p-1 rounded hover:bg-[#2a3240]"
+                                                title="Delete Occurrence"
+                                            >
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                </svg>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))
@@ -146,6 +196,49 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
                     </div>
                 </div>
             </div>
+
+            {/* Custom Dialogs */}
+            <CustomDialog
+                isOpen={dialogState.isOpen}
+                onClose={() => setDialogState({ isOpen: false, type: '', mission: null, message: '', runAt: '' })}
+                title={
+                    dialogState.type === 'confirm_delete' ? 'Confirm Delete' :
+                    dialogState.type === 'delete_success' ? 'Success' :
+                    'Error'
+                }
+                footer={
+                    dialogState.type === 'confirm_delete' ? (
+                        <>
+                            <button
+                                onClick={() => setDialogState({ ...dialogState, isOpen: false })}
+                                className="px-4 py-2 text-sm font-semibold text-gray-300 hover:text-white transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                className="px-4 py-2 text-sm font-semibold bg-red-500/10 text-red-500 border border-red-500/50 hover:bg-red-500/20 rounded transition-colors"
+                            >
+                                Delete
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            onClick={() => setDialogState({ isOpen: false, type: '', mission: null, message: '', runAt: '' })}
+                            className="px-4 py-2 text-sm font-semibold bg-[#3b82f6]/10 text-[#3b82f6] border border-[#3b82f6]/50 hover:bg-[#3b82f6]/20 rounded transition-colors"
+                        >
+                            OK
+                        </button>
+                    )
+                }
+            >
+                <div className="flex flex-col gap-2">
+                    <p>{dialogState.message}</p>
+                    {dialogState.runAt && (
+                        <p className="text-sm text-gray-400 font-mono mt-1">Run At: {dialogState.runAt}</p>
+                    )}
+                </div>
+            </CustomDialog>
         </div>
     );
 }
