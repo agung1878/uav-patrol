@@ -1,5 +1,6 @@
 import { hide } from '@tauri-apps/api/app';
 import React, { useState } from 'react';
+import useWeather from '../../../shared/hooks/useWeather';
 
 export default function DroneInfoPanel({
     drones = [],
@@ -46,8 +47,13 @@ export default function DroneInfoPanel({
 
     const batteryStatus = getBatteryStatus(battery);
 
+    // Weather
+    const weatherLat = latitude ?? selectedDrone?.home_latitude ?? -6.200000;
+    const weatherLon = longitude ?? selectedDrone?.home_longitude ?? 106.816666;
+    const { weather, loading: weatherLoading, error: weatherError } = useWeather(weatherLat, weatherLon);
+
     return (
-        <div className="w-full h-full bg-[#1c222c] rounded-2xl border border-[#2a3240] p-5 shadow-lg flex flex-col gap-4 select-none">
+        <div className="w-full h-full bg-[#1c222c] rounded-2xl border border-[#2a3240] p-5 shadow-lg flex flex-col gap-4 select-none overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-600/50 hover:[&::-webkit-scrollbar-thumb]:bg-gray-500/80 [&::-webkit-scrollbar-thumb]:rounded-full">
 
             {/* Header Section */}
             <div className="flex justify-between items-start">
@@ -105,7 +111,7 @@ export default function DroneInfoPanel({
                         </div>
                     )}
                 </div>
-                <img src="/images/ic_drone.png" alt="Drone" className="h-10 w-auto object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] invert brightness-75 sepia-[0.5] hue-rotate-180 saturate-50" />
+                <img src="/images/ic_siyi_drone.png" alt="Drone" className="h-16 w-auto object-contain drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)]" />
             </div>
 
             {/* Battery Section */}
@@ -142,14 +148,23 @@ export default function DroneInfoPanel({
                     <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
                             <div className="relative mt-1">
-                                <div className="w-6 h-6 rounded-full bg-[#fcd34d] absolute -left-1 -top-1"></div>
-                                <div className="w-8 h-4 bg-white rounded-full relative z-10 shadow-sm before:absolute before:w-3.5 before:h-3.5 before:bg-white before:rounded-full before:-top-2 before:left-1 after:absolute after:w-4.5 after:h-4.5 after:bg-white after:rounded-full after:-top-2.5 after:right-0.5"></div>
+                                {weather ? (
+                                    <img src={`https://openweathermap.org/img/wn/${weather.icon}.png`} alt="Weather icon" className="w-8 h-8 drop-shadow-sm brightness-110 contrast-125" />
+                                ) : (
+                                    <div className="w-8 h-8 rounded-full bg-gray-700 animate-pulse"></div>
+                                )}
                             </div>
-                            <span className="text-white text-2xl font-bold tracking-wider font-sans">31°C</span>
+                            <span className="text-white text-2xl font-bold tracking-wider font-sans">
+                                {weather ? `${weather.temp}°C` : '--°C'}
+                            </span>
                         </div>
                         <div className="flex flex-col items-end">
-                            <span className="text-white text-[13px] font-bold tracking-wide leading-tight">Cijantung</span>
-                            <span className="text-gray-300 text-[10px] font-mono tracking-wide mt-[2px]">11:30</span>
+                            <span className="text-white text-[13px] font-bold tracking-wide leading-tight max-w-[120px] truncate">
+                                {weather ? weather.locationName : 'Loading...'}
+                            </span>
+                            <span className="text-gray-300 text-[10px] font-mono tracking-wide mt-[2px]">
+                                {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
                         </div>
                     </div>
 
@@ -157,20 +172,28 @@ export default function DroneInfoPanel({
                     <div className="flex flex-col text-[10px] text-gray-400 mt-4">
                         <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
                         <div className="flex justify-between px-1">
-                            <div className="flex w-1/2 justify-between pr-4"><span>Gust</span><span className="text-gray-200 font-mono">6 m/s</span></div>
-                            <div className="flex w-1/2 justify-between pl-4"><span>Wind</span><span className="text-gray-200 font-mono">4 m/s</span></div>
+                            <div className="flex w-1/2 justify-between pr-4"><span>Gust</span><span className="text-gray-200 font-mono">{weather ? `${weather.gust} m/s` : '--'}</span></div>
+                            <div className="flex w-1/2 justify-between pl-4"><span>Wind</span><span className="text-gray-200 font-mono">{weather ? `${weather.windSpeed} m/s` : '--'}</span></div>
                         </div>
                         <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
                         <div className="flex justify-between px-1">
-                            <div className="flex w-1/2 justify-between pr-4"><span>Humid</span><span className="text-gray-200 font-mono">72%</span></div>
-                            <div className="flex w-1/2 justify-between pl-4"><span>Visibility</span><span className="text-gray-200 font-mono">10 km</span></div>
+                            <div className="flex w-1/2 justify-between pr-4"><span>Humid</span><span className="text-gray-200 font-mono">{weather ? `${weather.humidity}%` : '--'}</span></div>
+                            <div className="flex w-1/2 justify-between pl-4"><span>Visibility</span><span className="text-gray-200 font-mono">{weather ? `${weather.visibility} km` : '--'}</span></div>
                         </div>
                         <div className="h-[1px] w-full bg-[#2a3240] my-1.5 opacity-60"></div>
                     </div>
 
                     {/* Weather Footer */}
                     <div className="flex justify-center mt-2">
-                        <span className="text-[#1ab394] text-[10px] font-medium tracking-wide">Good Condition for flight</span>
+                        {weatherError ? (
+                            <span className="text-red-400 text-[9px] font-medium tracking-wide" title={weatherError}>Weather Data Unavailable</span>
+                        ) : weatherLoading && !weather ? (
+                            <span className="text-gray-400 text-[10px] font-medium tracking-wide">Fetching live weather...</span>
+                        ) : weather?.isGoodCondition ? (
+                            <span className="text-[#1ab394] text-[10px] font-medium tracking-wide">Good Condition for flight</span>
+                        ) : (
+                            <span className="text-[#f0ad4e] text-[10px] font-medium tracking-wide">Exercise Caution: {weather?.description}</span>
+                        )}
                     </div>
 
                 </div>

@@ -441,8 +441,8 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                         onClick={handleGenerateWaypoints}
                                         disabled={isSpiralOutOfBounds}
                                         className={`flex items-center gap-2 px-3 py-1.5 text-white text-[11px] font-medium rounded border shadow-lg transition-all ${isSpiralOutOfBounds
-                                                ? 'bg-gray-700/80 border-gray-600/30 cursor-not-allowed opacity-50'
-                                                : 'bg-purple-600/90 hover:bg-purple-500 border-purple-400/30 hover:shadow-purple-500/30 hover:shadow-xl'
+                                            ? 'bg-gray-700/80 border-gray-600/30 cursor-not-allowed opacity-50'
+                                            : 'bg-purple-600/90 hover:bg-purple-500 border-purple-400/30 hover:shadow-purple-500/30 hover:shadow-xl'
                                             }`}
                                     >
                                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -607,7 +607,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                     spiralWaypoints: isSpiral ? spiralWaypoints : [],
                                 });
                             }}
-                            className="flex-1 h-[48px] rounded flex items-center justify-center transition-all hover:from-[#f97316] hover:to-[#c2410c] relative overflow-hidden"
+                            className="flex-1 h-[44px] rounded flex items-center justify-center transition-all hover:from-[#f97316] hover:to-[#c2410c] relative overflow-hidden"
                         >
                             <img src="/images/btn_launch_dg.png" alt="Launch" />
                         </button>

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import useTelemetry from '../hooks/useTelemetry';
-import { uavService, authService } from '../../services/api';
+import { uavService, authService, notificationService } from '../../services/api';
 
 const SatelliteIcon = () => (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
@@ -13,6 +13,13 @@ const SettingsIcon = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
         <circle cx="12" cy="12" r="3" />
+    </svg>
+);
+
+const BellIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
     </svg>
 );
 
@@ -54,8 +61,15 @@ export default function AppHeader() {
     const navigate = useNavigate();
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const settingsRef = useRef(null);
+    const [isNotifOpen, setIsNotifOpen] = useState(false);
+    const notifRef = useRef(null);
+    
     const [currentTime, setCurrentTime] = useState(new Date());
     const [uavIds, setUavIds] = useState([]);
+    
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
 
     const handleLogout = async () => {
         setIsSettingsOpen(false);
@@ -98,15 +112,54 @@ export default function AppHeader() {
         return () => clearInterval(timer);
     }, []);
 
+    // Notification fetching
+    useEffect(() => {
+        const fetchUnread = async () => {
+            try {
+                const res = await notificationService.getUnreadCount();
+                if (res) setUnreadCount(res.unread_count || 0);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        fetchUnread();
+        const interval = setInterval(fetchUnread, 60000);
+        return () => clearInterval(interval);
+    }, []);
+
+    useEffect(() => {
+        if (isNotifOpen) {
+            setIsLoadingNotifs(true);
+            notificationService.getNotifications(1, 5)
+                .then(res => {
+                    if (res && res.items) setNotifications(res.items);
+                    const unreadIds = res?.items?.filter(n => !n.is_read).map(n => n.id) || [];
+                    if (unreadIds.length > 0) {
+                        notificationService.markRead(unreadIds).catch(console.error);
+                        setUnreadCount(prev => Math.max(0, prev - unreadIds.length));
+                        
+                        setNotifications(prev => prev.map(n => 
+                            unreadIds.includes(n.id) ? { ...n, is_read: true } : n
+                        ));
+                    }
+                })
+                .catch(console.error)
+                .finally(() => setIsLoadingNotifs(false));
+        }
+    }, [isNotifOpen]);
+
     useEffect(() => {
         function handleClickOutside(event) {
             if (settingsRef.current && !settingsRef.current.contains(event.target)) {
                 setIsSettingsOpen(false);
             }
+            if (notifRef.current && !notifRef.current.contains(event.target)) {
+                setIsNotifOpen(false);
+            }
         }
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, [settingsRef]);
+    }, [settingsRef, notifRef]);
 
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -229,11 +282,66 @@ export default function AppHeader() {
                         {timeStr}
                     </span>
                     <div className="flex flex-col text-[9px] uppercase tracking-wider text-gray-300 leading-[1.2] ml-3 mt-1">
-                        {/* <span>{dayStr}</span>
-                        <span>{dateStr}</span> */}
-                        <span>Wed</span>
-                        <span>20 May</span>
+                        <span>{dayStr}</span>
+                        <span>{dateStr}</span>
+                        {/* <span>Wed</span>
+                        <span>20 May</span> */}
                     </div>
+                </div>
+
+                {/* Notifications */}
+                <div className="relative" ref={notifRef}>
+                    <button
+                        onClick={() => setIsNotifOpen(!isNotifOpen)}
+                        className={`p-[7px] bg-[#1d232c] rounded-sm transition-colors flex items-center justify-center relative border border-transparent
+                            ${isNotifOpen ? 'text-[#ea580c] bg-[#252b36] border-[#ea580c]/50' : 'text-gray-100 hover:bg-[#252b36]'}`}
+                    >
+                        <BellIcon />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-0 right-0 transform translate-x-1/3 -translate-y-1/3 bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full border-2 border-[#2c3340] shadow-sm">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
+
+                    {/* Notifications Dropdown Menu */}
+                    {isNotifOpen && (
+                        <div className="absolute right-0 top-[calc(100%+8px)] w-[360px] bg-[#1a212b] border border-[#2a3240] rounded shadow-xl flex flex-col z-[100] overflow-hidden">
+                            <div className="px-5 py-3 border-b border-[#2a3240] flex justify-between items-center bg-[#1d232c]">
+                                <h3 className="text-white text-sm font-bold tracking-wide">Notifications</h3>
+                            </div>
+                            <div className="flex flex-col max-h-[380px] overflow-y-auto custom-scrollbar bg-[#1a212b]">
+                                {isLoadingNotifs ? (
+                                    <div className="p-6 text-center text-xs text-gray-400">Loading...</div>
+                                ) : notifications.length === 0 ? (
+                                    <div className="p-6 text-center text-xs text-gray-400">No new notifications</div>
+                                ) : (
+                                    notifications.map(notif => (
+                                        <div key={notif.id} className="p-4 border-b border-[#2a3240] hover:bg-[#252b36] transition-colors cursor-default">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <h4 className={`text-xs font-bold ${notif.type === 'mission_terminal' && notif.status === 'Failed' ? 'text-red-400' : 'text-[#ea580c]'}`}>
+                                                    {notif.title}
+                                                </h4>
+                                                {/* <span className="text-[10px] text-gray-500 font-mono shrink-0 ml-2 mt-[2px]">{new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</span> */}
+                                            </div>
+                                            <p className="text-[11px] text-gray-300 leading-relaxed mb-2">{notif.body}</p>
+                                            <span className="text-[9px] text-gray-500 font-mono">
+                                                {new Date(notif.created_at).toLocaleString('en-US', { hour12: false })}
+                                            </span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <div className="p-2 border-t border-[#2a3240] bg-[#1d232c]">
+                                <button
+                                    className="w-full py-2 text-[11px] text-[#ea580c] font-semibold hover:bg-[#252b36] rounded transition-colors"
+                                    onClick={() => { setIsNotifOpen(false); /* navigate('/notifications') */ }}
+                                >
+                                    Show all notifications
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
             </div>

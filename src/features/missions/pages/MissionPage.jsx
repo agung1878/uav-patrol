@@ -130,6 +130,8 @@ export default function MissionPage() {
                 latitude: wp.lat,
                 longitude: wp.lng,
                 altitude: parseFloat(data.altitude) || 10.0,
+                camera_tilt: data.camera_tilt !== undefined ? parseFloat(data.camera_tilt) : -45.0,
+                camera_yaw: data.camera_yaw !== undefined ? parseFloat(data.camera_yaw) : 0.0,
                 action: data.action || 'Take Picture',
                 action_duration: parseInt(data.action_duration) || 5
             };
@@ -393,6 +395,7 @@ export default function MissionPage() {
                 <ConflictDialog
                     conflictData={conflictData}
                     scheduleType={pendingMissionData.current?.schedule_type}
+                    newMissionName={pendingMissionData.current?.mission_name}
                     onConfirm={handleConflictConfirm}
                     onCancel={handleConflictCancel}
                     isSubmitting={isSubmitting}

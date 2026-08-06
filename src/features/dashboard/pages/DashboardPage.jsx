@@ -254,10 +254,10 @@ export default function DashboardPage() {
                         />
                     </div>
                     {/* Button Stream */}
-                    <div className="h-[360px] shrink-0">
+                    <div className="h-[30vh] min-h-[220px] max-h-[360px] shrink-0">
                         <StreamButtonPanel
                             onLaunchClick={() => setIsLaunchDialogOpen(true)}
-                            isStreaming={isStreaming || isConnecting}
+                        // isStreaming={isStreaming || isConnecting}
                         />
                     </div>
                 </div>
@@ -426,6 +426,7 @@ export default function DashboardPage() {
                 <ConflictDialog
                     conflictData={conflictData}
                     scheduleType={pendingMissionData.current?.schedule_type}
+                    newMissionName={pendingMissionData.current?.mission_name}
                     onConfirm={handleConflictConfirm}
                     onCancel={handleConflictCancel}
                     isSubmitting={isSubmitting}

@@ -7,7 +7,7 @@ export default function WaypointSelectionPanel({
     onRemoveWaypoint,
     onCancel
 }) {
-    const getPointData = (id) => waypointsData[id] || { altitude: 15, action: 'Take Picture', action_duration: 5 };
+    const getPointData = (id) => waypointsData[id] || { altitude: 15, camera_tilt: -45, camera_yaw: 0, action: 'Take Picture', action_duration: 5 };
 
     return (
         <div className="w-full h-full bg-[#1c222c] p-5 flex flex-col select-none">
@@ -52,44 +52,69 @@ export default function WaypointSelectionPanel({
                                 <div className="text-[9px] text-gray-500 font-mono mb-3">
                                     {wp.lat.toFixed(6)}, {wp.lng.toFixed(6)}
                                 </div>
-                                <div className="grid grid-cols-3 gap-3">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-gray-400 text-[9px] uppercase">Altitude (M)</span>
-                                        <div className="h-[28px] bg-[#1c222c] border border-[#2a3240] rounded px-2 flex items-center">
-                                            <input
-                                                type="number"
-                                                className="bg-transparent text-white text-[11px] outline-none w-full"
-                                                value={data.altitude}
-                                                onChange={(e) => onWaypointDataChange(wp.id, 'altitude', e.target.value)}
-                                            />
+                                <div className="flex flex-col gap-3">
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-gray-400 text-[9px] uppercase">Altitude (M)</span>
+                                            <div className="h-[28px] bg-[#1c222c] border border-[#2a3240] rounded px-2 flex items-center">
+                                                <input
+                                                    type="number"
+                                                    className="bg-transparent text-white text-[11px] outline-none w-full"
+                                                    value={data.altitude}
+                                                    onChange={(e) => onWaypointDataChange(wp.id, 'altitude', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        {/* <div className="flex flex-col gap-1">
+                                            <span className="text-gray-400 text-[9px] uppercase">Cam Yaw (°)</span>
+                                            <div className="h-[28px] bg-[#1c222c] border border-[#2a3240] rounded px-2 flex items-center">
+                                                <input
+                                                    type="number"
+                                                    className="bg-transparent text-white text-[11px] outline-none w-full"
+                                                    value={data.camera_yaw ?? 0}
+                                                    onChange={(e) => onWaypointDataChange(wp.id, 'camera_yaw', e.target.value)}
+                                                />
+                                            </div>
+                                        </div> */}
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-gray-400 text-[9px] uppercase">Duration (s)</span>
+                                            <div className="h-[28px] bg-[#1c222c] border border-[#2a3240] rounded px-2 flex items-center">
+                                                <input
+                                                    type="number"
+                                                    className="bg-transparent text-white text-[11px] outline-none w-full"
+                                                    value={data.action_duration ?? 5}
+                                                    onChange={(e) => onWaypointDataChange(wp.id, 'action_duration', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-gray-400 text-[9px] uppercase">Cam Tilt (°)</span>
+                                            <div className="h-[28px] bg-[#1c222c] border border-[#2a3240] rounded px-2 flex items-center">
+                                                <input
+                                                    type="number"
+                                                    className="bg-transparent text-white text-[11px] outline-none w-full"
+                                                    value={data.camera_tilt ?? -45}
+                                                    onChange={(e) => onWaypointDataChange(wp.id, 'camera_tilt', e.target.value)}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-gray-400 text-[9px] uppercase">Duration (s)</span>
-                                        <div className="h-[28px] bg-[#1c222c] border border-[#2a3240] rounded px-2 flex items-center">
-                                            <input
-                                                type="number"
-                                                className="bg-transparent text-white text-[11px] outline-none w-full"
-                                                value={data.action_duration ?? 5}
-                                                onChange={(e) => onWaypointDataChange(wp.id, 'action_duration', e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-gray-400 text-[9px] uppercase">Action</span>
-                                        <div className="h-[28px] bg-[#1c222c] border border-[#2a3240] rounded px-2 flex items-center relative">
-                                            <select
-                                                className="bg-transparent text-white text-[11px] outline-none w-full appearance-none cursor-pointer"
-                                                value={data.action}
-                                                onChange={(e) => onWaypointDataChange(wp.id, 'action', e.target.value)}
-                                            >
-                                                <option value="Take Picture" className="bg-[#1c222c]">Take Photo</option>
-                                                <option value="Record Video" className="bg-[#1c222c]">Video Record</option>
-
-                                            </select>
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 pointer-events-none absolute right-2">
-                                                <path d="M6 9l6 6 6-6" />
-                                            </svg>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-gray-400 text-[9px] uppercase">Action</span>
+                                            <div className="h-[28px] bg-[#1c222c] border border-[#2a3240] rounded px-2 flex items-center relative">
+                                                <select
+                                                    className="bg-transparent text-white text-[11px] outline-none w-full appearance-none cursor-pointer"
+                                                    value={data.action}
+                                                    onChange={(e) => onWaypointDataChange(wp.id, 'action', e.target.value)}
+                                                >
+                                                    <option value="Take Picture" className="bg-[#1c222c]">Take Photo</option>
+                                                    <option value="Record Video" className="bg-[#1c222c]">Video Record</option>
+                                                </select>
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-400 pointer-events-none absolute right-2">
+                                                    <path d="M6 9l6 6 6-6" />
+                                                </svg>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

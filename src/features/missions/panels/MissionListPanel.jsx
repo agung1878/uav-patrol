@@ -7,12 +7,13 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
     const [missions, setMissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [totalMissions, setTotalMissions] = useState(0);
+    const [activeTab, setActiveTab] = useState('today');
 
     useEffect(() => {
         const fetchMissions = async () => {
             try {
                 setLoading(true);
-                const data = await missionService.getMissionRuns(1, 50, 'today');
+                const data = await missionService.getMissionRuns(1, 50, activeTab);
 
                 // Format missions for the table
                 const formattedMissions = (data.items || []).map(m => {
@@ -49,7 +50,7 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
         };
 
         fetchMissions();
-    }, [refreshKey]);
+    }, [refreshKey, activeTab]);
 
     const handleRowClick = (mission) => {
         if (mission.status === 'In Progress') {
@@ -64,25 +65,42 @@ export default function MissionListPanel({ onAddMission, onSelectMission, refres
     return (
         <div className="w-full h-full p-5 flex flex-col select-none">
             {/* Header */}
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center space-x-3">
-                    <h2 className="text-white text-[18px] font-bold tracking-wide">Mission List</h2>
-                    <span className="text-gray-400 text-[11px] font-semibold mt-1">{totalMissions} Mission</span>
+            <div className="flex justify-between items-end mb-4">
+                <div className="flex flex-col space-y-1 border-b border-[#2a3240] w-full mr-4 pb-[1px] relative">
+                    <div className="flex items-center space-x-3 mb-2">
+                        <h2 className="text-white text-[18px] font-bold tracking-wide">Mission List</h2>
+                        <span className="text-gray-400 text-[11px] font-semibold mt-1 bg-[#252b36] px-2 py-0.5 rounded-full">{totalMissions} Missions</span>
+                    </div>
+                    {/* Tabs */}
+                    <div className="flex gap-4">
+                        <button
+                            onClick={() => setActiveTab('today')}
+                            className={`text-[8px] font-bold tracking-widest uppercase transition-colors px-1 py-1 border-b-2 ${activeTab === 'today' ? 'text-[#ea580c] border-[#ea580c]' : 'text-gray-500 hover:text-gray-300 border-transparent'}`}
+                        >
+                            Today
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('later')}
+                            className={`text-[8px] font-bold tracking-widest uppercase transition-colors px-1 py-1 border-b-2 ${activeTab === 'later' ? 'text-[#ea580c] border-[#ea580c]' : 'text-gray-500 hover:text-gray-300 border-transparent'}`}
+                        >
+                            Upcoming
+                        </button>
+                    </div>
                 </div>
                 <button
                     onClick={onAddMission}
-                    className="bg-gradient-to-b from-[#ea580c] to-[#9c3804] border border-[#ea580c] rounded px-4 py-1.5 text-white text-xs font-bold shadow-lg hover:brightness-110 transition flex items-center space-x-1"
+                    className="shrink-0 bg-gradient-to-b from-[#ea580c] to-[#9c3804] border border-[#ea580c] rounded-lg px-5 py-2.5 text-white text-[13px] font-bold shadow-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center space-x-2"
                 >
-                    <span className="text-lg leading-none mb-[2px]">+</span>
+                    <span className="text-lg leading-none">+</span>
                     <span>Add Mission</span>
                 </button>
             </div>
 
             {/* Horizontal Scroll Wrapper */}
-            <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar">
+            <div className="flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar bg-[#1c222c] border border-[#2a3240] rounded-xl p-3">
                 <div className="min-w-[600px] h-full flex flex-col">
                     {/* Table Header */}
-                    <div className="grid grid-cols-[1.5fr_2fr_1fr_1.5fr_1.5fr] gap-2 text-[10px] font-bold text-gray-500 border-b border-[#2a3240] pb-3 mb-2 uppercase tracking-widest px-2">
+                    <div className="grid grid-cols-[1.5fr_2fr_1fr_1.5fr_1.5fr] gap-2 text-[10px] font-bold text-gray-500 border-b border-[#2a3240] pb-2 mb-2 uppercase tracking-widest px-2">
                         <div className="text-left">Created Date</div>
                         <div className="text-left">Mission Name</div>
                         <div className="text-center">Status</div>

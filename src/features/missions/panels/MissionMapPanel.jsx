@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Circle, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import useWeather from '../../../shared/hooks/useWeather';
 
 // Fix Leaflet's default icon path issues
 delete L.Icon.Default.prototype._getIconUrl;
@@ -226,6 +227,11 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
     // Max range circle (use drone max_range or default 1800m)
     const maxRange = selectedDrone?.max_range_meter || 1800;
     const circleCenter = dockPosition || dronePosition;
+
+    // Weather
+    const weatherLat = circleCenter ? circleCenter[0] : defaultCenter[0];
+    const weatherLon = circleCenter ? circleCenter[1] : defaultCenter[1];
+    const { weather } = useWeather(weatherLat, weatherLon);
 
     return (
         <div className="relative w-full h-full bg-[#181d25]">
@@ -462,18 +468,28 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                         <div className="flex flex-col gap-2">
                             <span className="text-gray-400 text-[10px]">Weather Condition</span>
                             <div className="bg-[#171c24] border border-[#2a3240] rounded-lg p-3">
-                                <div className="flex items-center space-x-3 mb-3">
-                                    <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center text-xl shadow-inner shadow-yellow-500/50 relative">☁️</div>
-                                    <div className="flex-1 flex justify-between items-center">
-                                        <span className="text-white text-sm font-bold">Cloudy</span>
-                                        <span className="text-white text-lg font-bold">31°C</span>
+                                {weather ? (
+                                    <>
+                                        <div className="flex items-center space-x-3 mb-3">
+                                            <div className="w-8 h-8 flex items-center justify-center relative">
+                                                <img src={`https://openweathermap.org/img/wn/${weather.icon}.png`} alt="Weather icon" className="w-10 h-10 drop-shadow-sm brightness-110 contrast-125 scale-125" />
+                                            </div>
+                                            <div className="flex-1 flex justify-between items-center">
+                                                <span className="text-white text-sm font-bold capitalize truncate pr-2 max-w-[100px]">{weather.description}</span>
+                                                <span className="text-white text-lg font-bold">{weather.temp}°C</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between text-[10px] text-gray-400">
+                                            <div className="flex space-x-1"><span>Gust</span><span className="text-white font-mono">{weather.gust} m/s</span></div>
+                                            <div className="flex space-x-1"><span>Wind</span><span className="text-white font-mono">{weather.windSpeed} m/s</span></div>
+                                            <div className="flex space-x-1"><span>Humid</span><span className="text-white font-mono">{weather.humidity}%</span></div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex justify-center items-center py-2 text-[10px] text-gray-400 italic">
+                                        Loading weather data...
                                     </div>
-                                </div>
-                                <div className="flex justify-between text-[10px] text-gray-400">
-                                    <div className="flex space-x-1"><span>Gust</span><span className="text-white font-mono">6 m/s</span></div>
-                                    <div className="flex space-x-1"><span>Wind</span><span className="text-white font-mono">6 m/s</span></div>
-                                    <div className="flex space-x-1"><span>Humid</span><span className="text-white font-mono">6 m/s</span></div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     </div>

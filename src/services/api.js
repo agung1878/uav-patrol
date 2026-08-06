@@ -206,11 +206,11 @@ export const missionService = {
         return response.json();
     },
 
-    getMissionHistory: async (page = 1, limit = 20) => {
+    getMissionHistory: async (page = 1, limit = 10) => {
         const token = localStorage.getItem('authToken');
         if (!token) throw new Error('No authentication token found');
 
-        const response = await fetch(`${API_BASE_URL}/mission-historynantiinibenerinlagi?page=${page}&limit=${limit}`, {
+        const response = await fetch(`${API_BASE_URL}/mission-history?page=${page}&limit=${limit}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -218,10 +218,60 @@ export const missionService = {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            // throw new Error(errorData.error || 'Failed to fetch mission history');
-            throw new Error(errorData.error || 'Data histories not available');
+            throw new Error(errorData.error || 'Failed to fetch mission history');
+            // throw new Error(errorData.error || 'Data histories not available');
         }
 
+        return response.json();
+    }
+};
+
+export const notificationService = {
+    getNotifications: async (page = 1, limit = 5) => {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_BASE_URL}/notifications?page=${page}&limit=${limit}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to fetch notifications');
+        }
+        return response.json();
+    },
+    getUnreadCount: async () => {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_BASE_URL}/notifications/unread-count`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to fetch unread count');
+        }
+        return response.json();
+    },
+    markRead: async (ids) => {
+        const token = localStorage.getItem('authToken');
+        if (!token) throw new Error('No authentication token found');
+
+        const response = await fetch(`${API_BASE_URL}/notifications/read`, {
+            method: 'PATCH',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to mark read');
+        }
         return response.json();
     }
 };
