@@ -5,6 +5,7 @@ import useDetectionStream from '../../../shared/hooks/useDetectionStream';
 import useTelemetry from '../../../shared/hooks/useTelemetry';
 import { uavService } from '../../../services/api';
 import useDockStream from '../../../shared/hooks/useDockStream';
+import useWeather from '../../../shared/hooks/useWeather';
 
 // Mock components for the right sidebar and controls
 const DockCamPanel = () => {
@@ -66,37 +67,53 @@ const DockCamPanel = () => {
     );
 };
 
-const WeatherWidget = () => (
-    <div className="p-4 flex flex-col justify-between h-full bg-[#111827]">
-        <div className="flex justify-between items-start">
-            <div className="flex items-center gap-3">
-                <div className="text-yellow-400">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 7c-2.76 0-5 2.24-5 5 0 .65.13 1.26.36 1.83C7.14 13.92 7.07 14 7 14a4 4 0 1 0 0 8 4 4 0 1 0 0-8c.07 0 .14.01.21.02C7.38 10.36 9.5 8 12 8c.34 0 .67.04 1 .09V6c0-2.43 1.73-4.44 4-4.9V4a3 3 0 0 0-3 3v1h1a5 5 0 0 1 5 5v5h2v-5a7 7 0 0 0-7-7c-1.66 0-3.14.53-4.34 1.43C10.35 6.55 11.16 7 12 7z" /></svg>
+const WeatherWidget = ({ weather }) => {
+    if (!weather) {
+        return <div className="p-4 flex flex-col justify-center items-center h-full bg-[#111827] text-gray-400 text-sm">Loading weather...</div>;
+    }
+    return (
+        <div className="p-4 flex flex-col justify-between h-full bg-[#111827]">
+            <div className="flex justify-between items-start">
+                <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-start">
+                        <img src={`https://openweathermap.org/img/wn/${weather.icon}@2x.png`} alt="Weather icon" className="w-8 h-8" />
+
+                        <div className="text-2xl font-light text-white">{weather.temp}°C</div>
+                    </div>
                 </div>
-                <div>
-                    <div className="text-white font-semibold text-sm">Cloudy</div>
+                <div className="flex flex-col items-end">
+                    <span className="text-white text-[13px] font-bold tracking-wide leading-tight max-w-[120px] truncate">
+                        {weather ? weather.locationName : 'Loading...'}
+                    </span>
+                    <span className="text-gray-300 text-[10px] font-mono tracking-wide mt-[2px]">
+                        {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                 </div>
             </div>
-            <div className="text-3xl font-light text-white">31°C</div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-gray-400 mt-2">
-            <div className="flex justify-between"><span>Wind Speed</span><span className="text-gray-200">6 m/s</span></div>
-            <div className="flex justify-between"><span>Wind Blast</span><span className="text-gray-200">6 m/s</span></div>
-            <div className="flex justify-between"><span>Wind Gust</span><span className="text-gray-200">6 m/s</span></div>
-            <div className="flex justify-between"><span>Precipitation</span><span className="text-gray-200">6 m/s</span></div>
-        </div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[10px] text-gray-400 mt-3">
+                <div className="flex justify-between"><span>Wind Speed</span><span className="text-gray-200">{weather.windSpeed} m/s</span></div>
+                <div className="flex justify-between"><span>Wind Gust</span><span className="text-gray-200">{weather.gust} m/s</span></div>
+                <div className="flex justify-between"><span>Visibility</span><span className="text-gray-200">{weather.visibility} km</span></div>
+                <div className="flex justify-between"><span>Humidity</span><span className="text-gray-200">{weather.humidity} %</span></div>
+                <div className="flex justify-between"><span>Pressure</span><span className="text-gray-200">{weather.pressure} hPa</span></div>
+                <div className="flex justify-between"><span>Cloud Cover</span><span className="text-gray-200">{weather.clouds} %</span></div>
+                <div className="flex justify-between"><span>Feels Like</span><span className="text-gray-200">{weather.feelsLike}°C</span></div>
+                <div className="flex justify-between"><span>Precipitation</span><span className="text-gray-200">{weather.precipitation} mm</span></div>
+            </div>
 
-        <div className="flex justify-between mt-3 text-[10px] text-gray-400">
-            <div className="flex flex-col items-center gap-1"><span>12:00</span><span className="text-yellow-400">☁️</span><span>28°</span></div>
-            <div className="flex flex-col items-center gap-1"><span>14:00</span><span className="text-blue-400">🌧️</span><span>32°</span></div>
-            <div className="flex flex-col items-center gap-1"><span>15:00</span><span className="text-gray-400">☁️</span><span>31°</span></div>
-            <div className="flex flex-col items-center gap-1"><span>16:00</span><span className="text-yellow-400">🌤️</span><span>28°</span></div>
-            <div className="flex flex-col items-center gap-1"><span>17:00</span><span className="text-yellow-400">🌤️</span><span>29°</span></div>
-            <div className="flex flex-col items-center gap-1"><span>18:00</span><span className="text-yellow-400">☀️</span><span>30°</span></div>
+            <div className="flex justify-between mt-3 text-[10px] text-gray-400">
+                {weather.hourly?.map((hr, idx) => (
+                    <div key={idx} className="flex flex-col items-center gap-1">
+                        <span>{hr.time}</span>
+                        <img src={`https://openweathermap.org/img/wn/${hr.icon}.png`} alt="icon" className="w-6 h-6 my-[-4px]" />
+                        <span>{hr.temp}°</span>
+                    </div>
+                ))}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const DPadControl = ({ onZoomIn, onZoomOut, onZoomStop, onArrow, onArrowStop, onJoystickDrag, onJoystickStop, zoomLevel }) => {
     const intervalRef = useRef(null);
@@ -248,6 +265,11 @@ export default function ActiveMissionPage() {
     const selectedTelemetry = selectedUavId ? telemetry[selectedUavId] : null;
     const selectedTrajectory = selectedUavId ? positionHistory[selectedUavId] : null;
     const selectedHome = selectedUavId ? homePositions[selectedUavId] : null;
+
+    const defaultCenter = [-6.200000, 106.816666]; // Jakarta
+    const weatherLat = selectedHome ? selectedHome[0] : (selectedTelemetry?.location?.latitude || defaultCenter[0]);
+    const weatherLon = selectedHome ? selectedHome[1] : (selectedTelemetry?.location?.longitude || defaultCenter[1]);
+    const { weather } = useWeather(weatherLat, weatherLon);
 
     const location = selectedTelemetry?.location || {};
     const vehicleState = selectedTelemetry?.vehicle_state || {};
@@ -459,12 +481,12 @@ export default function ActiveMissionPage() {
                 {/* Right Sidebar: Dock Cam + Weather */}
                 <div className="w-[340px] shrink-0 flex flex-col gap-[20px]">
                     {/* Dock Cam */}
-                    <div className="h-[220px] rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg bg-[#111827]">
+                    <div className="h-[260px] rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg bg-[#111827]">
                         <DockCamPanel />
                     </div>
                     {/* Weather */}
-                    <div className="flex-1 rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg bg-[#111827]/90 backdrop-blur-sm">
-                        <WeatherWidget />
+                    <div className="h-[260px] rounded-[24px] border border-[#2a3240] overflow-hidden shadow-lg shrink-0">
+                        <WeatherWidget weather={weather} />
                     </div>
                 </div>
             </div>
@@ -514,8 +536,8 @@ export default function ActiveMissionPage() {
                                 <button
                                     onClick={handleToggleRecording}
                                     className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-[12px] bg-[#111827] border text-white text-[13px] font-bold hover:bg-white/5 transition-colors ${isRecording
-                                            ? 'border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.25)]'
-                                            : 'border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
+                                        ? 'border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.25)]'
+                                        : 'border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
                                         }`}
                                 >
                                     <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.8)] ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-red-500'}`}></div>
