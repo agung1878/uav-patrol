@@ -8,6 +8,7 @@ import AboutPage from '../features/settings/pages/AboutPage'
 import UserManagementPage from '../features/settings/pages/UserManagementPage'
 import LoginPage from '../features/auth/pages/LoginPage'
 import DockingPanelPage from '../features/settings/pages/DockingPanelPage'
+import NotificationsPage from '../features/dashboard/pages/NotificationsPage'
 
 function App() {
   const location = useLocation();
@@ -26,6 +27,7 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/user-management" element={<UserManagementPage />} />
         <Route path="/docking-panel" element={<DockingPanelPage />} />
+        <Route path="/notifications" element={<NotificationsPage />} />
       </Routes>
     </div>
   )

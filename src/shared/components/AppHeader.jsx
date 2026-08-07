@@ -335,7 +335,7 @@ export default function AppHeader() {
                             <div className="p-2 border-t border-[#2a3240] bg-[#1d232c]">
                                 <button
                                     className="w-full py-2 text-[11px] text-[#ea580c] font-semibold hover:bg-[#252b36] rounded transition-colors"
-                                    onClick={() => { setIsNotifOpen(false); /* navigate('/notifications') */ }}
+                                    onClick={() => { setIsNotifOpen(false); navigate('/notifications'); }}
                                 >
                                     Show all notifications
                                 </button>
