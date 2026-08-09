@@ -63,10 +63,10 @@ export default function AppHeader() {
     const settingsRef = useRef(null);
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const notifRef = useRef(null);
-    
+
     const [currentTime, setCurrentTime] = useState(new Date());
     const [uavIds, setUavIds] = useState([]);
-    
+
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
@@ -137,8 +137,8 @@ export default function AppHeader() {
                     if (unreadIds.length > 0) {
                         notificationService.markRead(unreadIds).catch(console.error);
                         setUnreadCount(prev => Math.max(0, prev - unreadIds.length));
-                        
-                        setNotifications(prev => prev.map(n => 
+
+                        setNotifications(prev => prev.map(n =>
                             unreadIds.includes(n.id) ? { ...n, is_read: true } : n
                         ));
                     }
@@ -225,8 +225,8 @@ export default function AppHeader() {
                                 >
                                     User Management
                                 </NavLink>
-                                {/* <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div> */}
-                                {/* <NavLink
+                                <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
+                                <NavLink
                                     to="/docking-panel"
                                     onClick={() => setIsSettingsOpen(false)}
                                     className={({ isActive }) => `
@@ -235,7 +235,7 @@ export default function AppHeader() {
                                     `}
                                 >
                                     Docking Panel
-                                </NavLink> */}
+                                </NavLink>
                                 <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
                                 <button
                                     onClick={handleLogout}

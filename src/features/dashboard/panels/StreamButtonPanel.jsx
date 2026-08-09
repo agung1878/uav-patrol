@@ -21,7 +21,7 @@ export default function StreamButtonPanel({ onLaunchClick, isStreaming, upcoming
             setPanelState('idle');
         } else if (missionEvent?.event === 'takeoff') {
             setPanelState('streaming');
-        } else if (activeMission || (runtime && runtime !== 'Completed' && runtime !== 'PreparingDock' && runtime !== 'Idle')) {
+        } else if (activeMission || (runtime && runtime !== 'Completed' && runtime !== 'PreparingDock' && runtime !== 'Idle' && runtime !== 'Waiting')) {
             // Restore streaming state if remounted while mission is already running
             setPanelState('streaming');
         }

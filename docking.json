@@ -1,0 +1,1141 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Drone BMS Management API",
+        "description": "API untuk monitoring baterai drone via STM32 Serial",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/": {
+            "get": {
+                "summary": "Read Index",
+                "operationId": "read_index__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/port_status/": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "Port Status",
+                "operationId": "port_status_port_status__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/drone/charge": {
+            "post": {
+                "tags": [
+                    "BMS"
+                ],
+                "summary": "Control Board Charge",
+                "description": "Mengontrol pin Gate Charge pada board eksternal via CAN Bus (ID: 0x101).\n- ON  : Menghidupkan Charge\n- OFF : Mematikan Charge\n- CEK : Meminta status saat ini tanpa merubah kondisi pin",
+                "operationId": "control_board_charge_drone_charge_post",
+                "parameters": [
+                    {
+                        "name": "action",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Pilih: ON, OFF, atau CEK",
+                            "title": "Action"
+                        },
+                        "description": "Pilih: ON, OFF, atau CEK"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/drone/load": {
+            "post": {
+                "tags": [
+                    "BMS"
+                ],
+                "summary": "Control Board Load",
+                "description": "Mengontrol pin Gate Load pada board eksternal via CAN Bus (ID: 0x102).\n- ON  : Menghidupkan Load\n- OFF : Mematikan Load\n- CEK : Meminta status saat ini tanpa merubah kondisi pin",
+                "operationId": "control_board_load_drone_load_post",
+                "parameters": [
+                    {
+                        "name": "action",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "Pilih: ON, OFF, atau CEK",
+                            "title": "Action"
+                        },
+                        "description": "Pilih: ON, OFF, atau CEK"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/drone/bms-info": {
+            "get": {
+                "tags": [
+                    "BMS"
+                ],
+                "summary": "Api Get Bms Info",
+                "operationId": "api_get_bms_info_drone_bms_info_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/drone/charge/start": {
+            "post": {
+                "tags": [
+                    "BMS"
+                ],
+                "summary": "Start Charging Sequence",
+                "description": "Menjalankan urutan pengisian:\nPSU ON -\u003E Delay -\u003E Charge Command -\u003E Safety Monitor.",
+                "operationId": "start_charging_sequence_drone_charge_start_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/drone/charge/stop": {
+            "post": {
+                "tags": [
+                    "BMS"
+                ],
+                "summary": "Stop Charging",
+                "description": "Berhenti mengisi daya secara aman:\nFinish Command -\u003E PSU OFF.",
+                "operationId": "stop_charging_drone_charge_stop_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/psu/on": {
+            "post": {
+                "tags": [
+                    "Docking"
+                ],
+                "summary": "Psu On",
+                "description": "Menyalakan Power Supply Docking Utama",
+                "operationId": "psu_on_docking_psu_on_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/psu/off": {
+            "post": {
+                "tags": [
+                    "Docking"
+                ],
+                "summary": "Psu Off",
+                "description": "Mematikan Power Supply Docking Utama",
+                "operationId": "psu_off_docking_psu_off_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/psu/info": {
+            "get": {
+                "tags": [
+                    "Docking"
+                ],
+                "summary": "Get Psu Status",
+                "description": "Mengecek apakah Pin Plus dan Minus pada Docking aktif (ACTIVE/INACTIVE)",
+                "operationId": "get_psu_status_docking_psu_info_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/status_motor_lifter": {
+            "get": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Get Last Feedback",
+                "operationId": "get_last_feedback_status_motor_lifter_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/lifter/up": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Lifter Up",
+                "description": "Endpoint untuk menaikkan lifter (Speed = 50).\nAkan mengecek status limit switch tiap 1 detik selama maksimal 60 detik.\nJika Top Limit = HIT, motor akan berhenti.\nAddress Register Speed = 0x0053",
+                "operationId": "lifter_up_docking_lifter_up_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/lifter/down": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Lifter Down",
+                "description": "Endpoint untuk menurunkan lifter (Speed = -50).\nAkan mengecek status limit switch tiap 1 detik selama maksimal 60 detik.\nJika Bottom Limit = HIT, motor akan berhenti.\nAddress Register Speed = 0x0053",
+                "operationId": "lifter_down_docking_lifter_down_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/lifter/stop": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Lifter Stop",
+                "description": "Endpoint untuk menghentikan lifter (Speed = 0).\nAkan otomatis membatalkan proses polling di /lifter/up atau /lifter/down.\nAddress Register Speed = 0x0053",
+                "operationId": "lifter_stop_docking_lifter_stop_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/lifter/limit": {
+            "get": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Get Limit Lifter Status",
+                "description": "Endpoint untuk mengecek status limit switch Atas dan Bawah pada Lifter.\nAkan mengembalikan data JSON langsung dari STM32.",
+                "operationId": "get_limit_lifter_status_docking_lifter_limit_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/roof/open": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Open Roof",
+                "description": "Membuka atap docking (Sequential Right then Left)",
+                "operationId": "open_roof_docking_roof_open_post",
+                "parameters": [
+                    {
+                        "name": "speed",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Kecepatan stepper motor",
+                            "default": 140,
+                            "title": "Speed"
+                        },
+                        "description": "Kecepatan stepper motor"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/roof/close": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Close Roof",
+                "description": "Menutup atap docking (Sequential Left then Right)",
+                "operationId": "close_roof_docking_roof_close_post",
+                "parameters": [
+                    {
+                        "name": "speed",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Kecepatan stepper motor",
+                            "default": 140,
+                            "title": "Speed"
+                        },
+                        "description": "Kecepatan stepper motor"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/roof/stop": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Stop Roof",
+                "description": "Menghentikan semua motor stepper darurat",
+                "operationId": "stop_roof_docking_roof_stop_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/centering/right-in": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Centering Right In",
+                "description": "Menggerakkan motor centering kanan ke arah dalam",
+                "operationId": "centering_right_in_docking_centering_right_in_post",
+                "parameters": [
+                    {
+                        "name": "speed",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Kecepatan motor centering kanan masuk",
+                            "default": 100,
+                            "title": "Speed"
+                        },
+                        "description": "Kecepatan motor centering kanan masuk"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/centering/right-out": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Centering Right Out",
+                "description": "Menggerakkan motor centering kanan ke arah luar",
+                "operationId": "centering_right_out_docking_centering_right_out_post",
+                "parameters": [
+                    {
+                        "name": "speed",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Kecepatan motor centering kanan keluar",
+                            "default": 100,
+                            "title": "Speed"
+                        },
+                        "description": "Kecepatan motor centering kanan keluar"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/centering/left-in": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Centering Left In",
+                "description": "Menggerakkan motor centering kiri ke arah dalam",
+                "operationId": "centering_left_in_docking_centering_left_in_post",
+                "parameters": [
+                    {
+                        "name": "speed",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Kecepatan motor centering kiri masuk",
+                            "default": 100,
+                            "title": "Speed"
+                        },
+                        "description": "Kecepatan motor centering kiri masuk"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/centering/left-out": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Centering Left Out",
+                "description": "Menggerakkan motor centering kiri ke arah luar",
+                "operationId": "centering_left_out_docking_centering_left_out_post",
+                "parameters": [
+                    {
+                        "name": "speed",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Kecepatan motor centering kiri keluar",
+                            "default": 100,
+                            "title": "Speed"
+                        },
+                        "description": "Kecepatan motor centering kiri keluar"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/centering/stop": {
+            "post": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Stop Centering",
+                "description": "Menghentikan semua pergerakan motor centering (Kanan & Kiri)",
+                "operationId": "stop_centering_docking_centering_stop_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/centering/limit-switches": {
+            "get": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Get Centering Limits",
+                "description": "Mengecek status 4 limit switch motor centering\nMengembalikan data right_in, right_out, left_in, dan left_out",
+                "operationId": "get_centering_limits_docking_centering_limit_switches_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/limit-switches": {
+            "get": {
+                "tags": [
+                    "Mechanical"
+                ],
+                "summary": "Get Limits",
+                "description": "Mengecek status 4 limit switch (Open/Close L/R) dari variabel state terakhir",
+                "operationId": "get_limits_docking_limit_switches_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/temperature": {
+            "get": {
+                "tags": [
+                    "Peripheral"
+                ],
+                "summary": "Get Temperature",
+                "description": "Mengambil suhu docking melalui Peripheral Service",
+                "operationId": "get_temperature_docking_temperature_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/led/red": {
+            "post": {
+                "tags": [
+                    "Peripheral"
+                ],
+                "summary": "Control Led Red",
+                "description": "Mengontrol LED Merah (ON/OFF)",
+                "operationId": "control_led_red_docking_led_red_post",
+                "parameters": [
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "State"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/led/yellow": {
+            "post": {
+                "tags": [
+                    "Peripheral"
+                ],
+                "summary": "Control Led Yellow",
+                "description": "Mengontrol LED Kuning (ON/OFF)",
+                "operationId": "control_led_yellow_docking_led_yellow_post",
+                "parameters": [
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "State"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/led/all": {
+            "post": {
+                "tags": [
+                    "Peripheral"
+                ],
+                "summary": "Control Led All",
+                "description": "Mengontrol Semua LED (ON/OFF)",
+                "operationId": "control_led_all_docking_led_all_post",
+                "parameters": [
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "State"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/led/info": {
+            "get": {
+                "tags": [
+                    "Peripheral"
+                ],
+                "summary": "Get Led Status",
+                "description": "Mengecek status aktual LED Merah & Kuning",
+                "operationId": "get_led_status_docking_led_info_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/audio/start": {
+            "post": {
+                "tags": [
+                    "Audio"
+                ],
+                "summary": "Start Audio",
+                "description": "Mengaktifkan suara peringatan (Looping)",
+                "operationId": "start_audio_docking_audio_start_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/audio/stop": {
+            "post": {
+                "tags": [
+                    "Audio"
+                ],
+                "summary": "Stop Audio",
+                "description": "Mematikan semua suara",
+                "operationId": "stop_audio_docking_audio_stop_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/docking/audio/once": {
+            "post": {
+                "tags": [
+                    "Audio"
+                ],
+                "summary": "Play Audio Once",
+                "description": "Memainkan suara satu kali saja (Play Once)",
+                "operationId": "play_audio_once_docking_audio_once_post",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ac/mode": {
+            "post": {
+                "tags": [
+                    "AC Controller"
+                ],
+                "summary": "Set Ac Mode",
+                "description": "Set Mode AC ke AUTO atau MANUAL",
+                "operationId": "set_ac_mode_ac_mode_post",
+                "parameters": [
+                    {
+                        "name": "mode",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "AUTO atau MANUAL",
+                            "title": "Mode"
+                        },
+                        "description": "AUTO atau MANUAL"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ac/power": {
+            "post": {
+                "tags": [
+                    "AC Controller"
+                ],
+                "summary": "Set Ac Power",
+                "description": "Nyalakan atau Matikan AC (Otomatis berpindah ke mode MANUAL)",
+                "operationId": "set_ac_power_ac_power_post",
+                "parameters": [
+                    {
+                        "name": "state",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "description": "ON atau OFF",
+                            "title": "State"
+                        },
+                        "description": "ON atau OFF"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ac/temp/{temp}": {
+            "post": {
+                "tags": [
+                    "AC Controller"
+                ],
+                "summary": "Set Ac Temp",
+                "description": "Ubah suhu AC (Otomatis berpindah ke mode MANUAL)",
+                "operationId": "set_ac_temp_ac_temp__temp__post",
+                "parameters": [
+                    {
+                        "name": "temp",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "description": "Suhu antara 20 - 30 derajat",
+                            "title": "Temp"
+                        },
+                        "description": "Suhu antara 20 - 30 derajat"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ac/status": {
+            "get": {
+                "tags": [
+                    "AC Controller"
+                ],
+                "summary": "Get Ac Status",
+                "description": "Cek status AC saat ini (Power dan Target Suhu)",
+                "operationId": "get_ac_status_ac_status_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/system/health": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "Health Check",
+                "operationId": "health_check_system_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}
