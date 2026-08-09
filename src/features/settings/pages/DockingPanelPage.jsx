@@ -103,7 +103,7 @@ export default function DockingPanelPage() {
         switch (actionName) {
             case 'start_charging': endpoint = '/drone/charge/start'; break;
             case 'emergency_stop': endpoint = '/drone/charge/stop'; break;
-            case 'roof_open': endpoint = '/docking/roof/open?speed=150'; break;
+            case 'roof_open': endpoint = '/docking/roof/open'; break;
             case 'roof_close': endpoint = '/docking/roof/close'; break;
             case 'roof_stop': endpoint = '/docking/roof/stop'; break;
             case 'lifter_up': endpoint = '/docking/lifter/up'; break;
@@ -129,6 +129,8 @@ export default function DockingPanelPage() {
         let timeoutMs = 25000;
         if (['roof_open', 'roof_close', 'lifter_up', 'lifter_down'].includes(actionName)) {
             timeoutMs = 60000;
+        } else if (['right_motor_in', 'right_motor_out', 'left_motor_in', 'left_motor_out'].includes(actionName)) {
+            timeoutMs = 30000;
         }
 
         try {
@@ -184,10 +186,10 @@ export default function DockingPanelPage() {
     return (
         <div className="p-8 w-full h-[calc(100vh-104px)] overflow-hidden flex justify-center font-sans bg-[#111319] text-gray-200">
             <div className="w-full max-w-[1400px] h-full flex gap-6 overflow-hidden">
-                
+
                 {/* LEFT COLUMN */}
                 <div className="flex-1 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2 pb-8">
-                    
+
                     {/* POWER */}
                     <div className={`p-6 rounded-2xl flex items-center justify-between border shadow-lg transition-all ${powerState === 'on' ? 'bg-[#151c20] border-emerald-500/20' : 'bg-[#1c1516] border-red-500/20'}`}>
                         <div className="flex items-center gap-4">
@@ -195,13 +197,13 @@ export default function DockingPanelPage() {
                             <h2 className="text-3xl font-bold tracking-wide">Power</h2>
                         </div>
                         <div className="flex gap-3 bg-[#1e232e] p-1.5 rounded-lg border border-[#2a303c]">
-                            <button 
+                            <button
                                 onClick={() => { setPowerState('on'); handleAction('psu_enable'); }}
                                 className={`px-10 py-2.5 rounded-md font-bold text-sm tracking-widest transition-all ${powerState === 'on' ? 'bg-emerald-400 text-black shadow-[0_0_15px_rgba(52,211,153,0.3)]' : 'text-gray-400 hover:text-white'}`}
                             >
                                 On
                             </button>
-                            <button 
+                            <button
                                 onClick={() => { setPowerState('off'); handleAction('psu_disable'); }}
                                 className={`px-10 py-2.5 rounded-md font-bold text-sm tracking-widest transition-all ${powerState === 'off' ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.3)]' : 'text-gray-400 hover:text-white'}`}
                             >
@@ -214,7 +216,7 @@ export default function DockingPanelPage() {
                     <div className="flex flex-col gap-4">
                         <h3 className="text-lg font-bold text-gray-100 tracking-wide pl-1">Docking Mechanics</h3>
                         <div className="bg-[#1a1d24] border border-[#262b36] rounded-2xl p-6 flex flex-col gap-6 shadow-xl">
-                            
+
                             {/* Door Docking */}
                             <div className="bg-[#1d222b] border border-[#2a2f3a] rounded-xl p-5 flex items-center justify-between shadow-inner">
                                 <div className="flex items-center gap-3">
@@ -222,19 +224,19 @@ export default function DockingPanelPage() {
                                     <span className="font-bold text-[15px] tracking-wide">Door Docking</span>
                                 </div>
                                 <div className="flex bg-[#14171d] border border-[#1e232e] rounded-lg overflow-hidden">
-                                    <button 
+                                    <button
                                         onClick={() => { setDoorState('open'); handleAction('roof_open'); }}
                                         className={`px-6 py-2.5 font-bold text-xs tracking-wider transition-all ${doorState === 'open' ? 'bg-[#f39c12] text-black shadow-[0_0_10px_rgba(243,156,18,0.3)]' : 'text-gray-400 hover:bg-[#1a1d24]'}`}
                                     >
                                         Open
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => { setDoorState('stop'); handleAction('roof_stop'); }}
                                         className={`px-6 py-2.5 font-bold text-xs tracking-wider transition-all ${doorState === 'stop' ? 'bg-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'text-gray-400 hover:bg-[#1a1d24]'}`}
                                     >
                                         Stop
                                     </button>
-                                    <button 
+                                    <button
                                         onClick={() => { setDoorState('close'); handleAction('roof_close'); }}
                                         className={`px-6 py-2.5 font-bold text-xs tracking-wider transition-all ${doorState === 'close' ? 'bg-gray-600 text-white' : 'text-gray-400 hover:bg-[#1a1d24]'}`}
                                     >
@@ -308,7 +310,7 @@ export default function DockingPanelPage() {
                     <div className="flex flex-col gap-4">
                         <h3 className="text-lg font-bold text-gray-100 tracking-wide pl-1">Power & Environment</h3>
                         <div className="bg-[#1a1d24] border border-[#262b36] rounded-2xl p-6 shadow-xl grid grid-cols-2 gap-6">
-                            
+
                             {/* AC */}
                             <div className="bg-[#1d222b] border border-[#2a2f3a] rounded-xl p-5 flex flex-col justify-between shadow-inner h-[120px]">
                                 <div className="flex items-center gap-3">
@@ -317,7 +319,7 @@ export default function DockingPanelPage() {
                                 </div>
                                 <div>
                                     <div className="flex items-center justify-between mb-2 mt-4">
-                                        <button 
+                                        <button
                                             onClick={() => { setAcState(!acState); handleAction(acState ? 'hvac_pwr_off' : 'hvac_pwr_on'); }}
                                             className={`relative w-[48px] h-[24px] rounded-full transition-colors duration-300 ${acState ? 'bg-[#34D399]' : 'bg-[#3A4150]'}`}
                                         >
@@ -337,7 +339,7 @@ export default function DockingPanelPage() {
                                 </div>
                                 <div>
                                     <div className="flex items-center justify-between mb-2 mt-4">
-                                        <button 
+                                        <button
                                             onClick={() => { setChargingState(!chargingState); handleAction(chargingState ? 'emergency_stop' : 'start_charging'); }}
                                             className={`relative w-[48px] h-[24px] rounded-full transition-colors duration-300 ${chargingState ? 'bg-[#34D399]' : 'bg-[#3A4150]'}`}
                                         >
