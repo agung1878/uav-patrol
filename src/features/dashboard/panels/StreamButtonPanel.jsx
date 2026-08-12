@@ -6,7 +6,9 @@ export default function StreamButtonPanel({ onLaunchClick, isStreaming, upcoming
     
     // States: 'idle', 'countdown', 'waiting_drone', 'streaming'
     const [panelState, setPanelState] = useState(() => {
-        if (activeMission || isStreaming) return 'streaming';
+        const runtime = selectedTelemetry?.mission_status?.runtime_status;
+        const hasRunningMission = activeMission || (runtime && runtime !== 'Completed' && runtime !== 'PreparingDock' && runtime !== 'Idle' && runtime !== 'Waiting');
+        if (hasRunningMission) return 'streaming';
         return 'idle';
     });
     const [countdown, setCountdown] = useState(null);
@@ -30,9 +32,13 @@ export default function StreamButtonPanel({ onLaunchClick, isStreaming, upcoming
     // Handle isStreaming prop fallback
     useEffect(() => {
         if (isStreaming && panelState !== 'streaming') {
-            setPanelState('streaming');
+            const runtime = selectedTelemetry?.mission_status?.runtime_status;
+            const hasRunningMission = activeMission || (runtime && runtime !== 'Completed' && runtime !== 'PreparingDock' && runtime !== 'Idle' && runtime !== 'Waiting');
+            if (hasRunningMission) {
+                setPanelState('streaming');
+            }
         }
-    }, [isStreaming]);
+    }, [isStreaming, panelState, activeMission, selectedTelemetry]);
 
     // Handle countdown timer
     useEffect(() => {

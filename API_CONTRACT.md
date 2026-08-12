@@ -42,6 +42,7 @@ Detail WebSocket ada di [docs/WEBSOCKET_CONTRACT.md](/Users/macbook/Workdir/Offi
 
 - `admin`: manage user, UAV, docking, device token
 - `user`: akses mission shared dan profile sendiri
+- `viewer`: read-only terbatas untuk endpoint monitoring tertentu dan subscribe WebSocket tanpa publish
 
 ## Canonical Endpoints
 
@@ -89,12 +90,17 @@ Behavior:
 
 - `GET /missions`
 - `GET /mission-runs`
+- `GET /notifications`
+- `GET /notifications/unread-count`
+- `PATCH /notifications/read`
 - `POST /mission-conflicts/preview`
 - `POST /missions`
 - `GET /missions/{id}`
 - `PATCH /missions/{id}`
 - `DELETE /missions/{id}`
+- `DELETE /missions/{id}/occurrences?run_at={RFC3339}`
 - `POST /missions/{id}/start`
+- `DELETE /notifications/{id}`
 
 Rules:
 - mission selalu diarahkan ke singleton UAV
@@ -195,6 +201,7 @@ Mission run query semantics:
 - query `days` hanya berlaku untuk `upcoming=later`
 - kalau `days` tidak dikirim untuk `upcoming=later`, backend memakai default `21` hari
 - setiap item response membawa `run_at` untuk jadwal occurrence yang spesifik
+- response diurutkan berdasarkan `run_at` terbaru lebih dulu; jika `run_at` sama, mission yang dibuat paling baru ditampilkan lebih dulu
 - `status` pada item occurrence diambil dari `mission_history` jika sudah ada run untuk `mission_id + run_at` yang sama
 - jika dua occurrence bentrok dan belum ada resolution manual, backend akan auto-pilih winner berdasarkan `priority`
 - jika `priority` sama, backend fallback ke `run_at` yang lebih awal lalu `mission_id` lebih kecil
@@ -204,11 +211,13 @@ Mission run query semantics:
 - kalau belum ada history dan tidak ada resolution/conflict aktif, `status` tetap `Waiting`
 - jika ada history cocok, response juga bisa membawa `history_id`, `started_at`, `completed_at`, dan `failure_reason`
 - `Skipped` tidak membuat row baru di `mission_history`; status ini dibaca dari `mission_occurrence_resolutions`
+- recovery timeout mengabaikan occurrence dengan resolution `skipped_conflict` atau `deleted`, sehingga occurrence tersebut tidak menghasilkan history/event/notifikasi `Failed`
 - `Failed` dan `Aborted` tetap berasal dari `mission_history`
 - kalau env `MISSION_MIN_GAP_MINUTES` tidak diisi atau invalid, backend fallback ke `150`
 
 Compatibility notes:
 - endpoint penerbangan seperti `GET /missions/{id}`, `GET /missions/waiting/device`, dan `GET /missions/safe-to-fly/device` tetap mengembalikan `schedule`
+- endpoint device mission seperti `GET /missions/waiting/device` dan `GET /missions/safe-to-fly/device` juga mengembalikan field `roi` dengan bentuk yang sama seperti detail mission biasa; jika mission belum punya ROI maka nilainya `null`
 - client baru sebaiknya membaca `schedule_type`, `schedule_timezone`, dan `schedule_config` untuk kebutuhan edit/preview scheduler
 
 Mission runtime reschedule:
@@ -236,17 +245,38 @@ Mission runtime activity reference:
 - jika belum ada event baru, backend fallback ke `started_at`
 - setelah auto `Failed` atau `Aborted`, template mission akan dihitung ulang ke next schedule seperti rule reschedule di atas
 
+Notification rules:
+- notification bersifat global per UAV singleton, bukan per user
+- semua user login melihat daftar notification yang sama
+- jika satu notification dihapus, notification itu hilang untuk semua user
+- state read/unread juga bersifat global
+- type notification saat ini:
+  - `mission_reminder` untuk reminder `30`, `10`, dan `5` menit sebelum `schedule`
+  - `mission_terminal` untuk mission berakhir `Failed` atau `Aborted`
+- `mission_reminder` expire `1 hari` setelah `run_at`
+- `mission_terminal` expire `1 hari` setelah dibuat
+- backend memakai `dedupe_key` internal agar reminder atau terminal notification yang sama tidak terbuat ganda saat recovery sweep / retry berjalan lebih dari sekali
+- `mission_terminal.body` diambil dari `message`, lalu fallback ke `failure_reason`, lalu fallback ke `failure_code`
+- untuk badge frontend, backend menyediakan `GET /notifications/unread-count`
+- `GET /notifications/unread-count` juga bisa difilter dengan `type` jika frontend ingin badge terpisah per kategori
+- untuk pagination, frontend disarankan mark read berdasarkan daftar `ids` notification yang benar-benar sedang tampil, bukan memakai `read-all`
+
 ### Mission Runtime
 
 - `GET /mission/current`
 - `GET /missions/waiting/device`
 - `GET /missions/safe-to-fly/device`
 - `GET /telemetry/track`
+- `GET /notifications`
+- `GET /notifications/unread-count`
+- `PATCH /notifications/read`
+- `DELETE /notifications/{id}`
 - `GET /mission-history`
 - `GET /mission-history/{history_id}/state`
 - `PATCH /mission-history/{history_id}/state`
 - `POST /mission-history/{history_id}/complete`
 - `GET /mission-history/{history_id}/events`
+- `GET /mission-history/{history_id}/track`
 - `GET /mission-history/{history_id}/media`
 - `POST /mission-history/{history_id}/media/upload`
 - `POST /mission-history/{history_id}/media/register`
@@ -254,6 +284,81 @@ Mission runtime activity reference:
 - `POST /mission-history/{history_id}/full-video/upload`
 - `GET /mission-history/{history_id}/full-video`
 - `GET /mission-media/{media_id}/download`
+
+Device mission response note:
+- `GET /missions/waiting/device` mengembalikan payload mission yang sama seperti detail mission, termasuk `roi`, `schedule_type`, `schedule_timezone`, `schedule_config`, dan `waypoints`
+- `GET /missions/safe-to-fly/device` mengembalikan field `mission` atau `nearest_mission`; object mission di dalam response juga membawa field `roi`
+
+Contoh `GET /missions/waiting/device`:
+
+```json
+{
+  "id": 12,
+  "uav_id": 1,
+  "mission_name": "Tower Audit",
+  "takeoff_altitude": 30,
+  "takeoff_hold_duration": 10,
+  "roi": {
+    "latitude": -6.2101,
+    "longitude": 106.8291
+  },
+  "schedule": "2026-06-18T08:00:00+07:00",
+  "schedule_type": "daily",
+  "schedule_timezone": "Asia/Jakarta",
+  "schedule_config": {
+    "start_date": "2026-06-18",
+    "end_date": "2026-06-30",
+    "times": ["08:00"]
+  },
+  "priority": 100,
+  "status": "Waiting",
+  "waypoints": [
+    {
+      "id": 1,
+      "mission_id": 12,
+      "sequence_order": 1,
+      "latitude": -6.21,
+      "longitude": 106.82,
+      "altitude": 20,
+      "camera_tilt": -45,
+      "camera_yaw": 0,
+      "action": "Take Picture",
+      "action_duration": 5
+    }
+  ]
+}
+```
+
+Contoh `GET /missions/safe-to-fly/device`:
+
+```json
+{
+  "mission": {
+    "id": 12,
+    "uav_id": 1,
+    "mission_name": "Tower Audit",
+    "takeoff_altitude": 30,
+    "takeoff_hold_duration": 10,
+    "roi": {
+      "latitude": -6.2101,
+      "longitude": 106.8291
+    },
+    "schedule": "2026-06-18T08:00:00+07:00",
+    "schedule_type": "daily",
+    "schedule_timezone": "Asia/Jakarta",
+    "schedule_config": {
+      "start_date": "2026-06-18",
+      "end_date": "2026-06-30",
+      "times": ["08:00"]
+    },
+    "priority": 100,
+    "status": "InProgress",
+    "waypoints": [],
+    "history_id": 123,
+    "runtime_status": "SafeToFly"
+  }
+}
+```
 
 ### Realtime
 
@@ -276,12 +381,13 @@ Rules:
 - `kind` valid: `telemetry`, `status`
 - status metric valid: `uav_status`, `docking_status`
 - status di-upsert ke `uav_status` atau `docking_status` sebelum broadcast
-- `kind=telemetry` yang membawa `payload.latitude` + `payload.longitude` akan dicoba dipersist sebagai mission track point bila ada `mission_history` aktif untuk UAV singleton yang sedang berjalan
+- `kind=telemetry` yang membawa koordinat akan dicoba dipersist sebagai mission track point bila ada `mission_history` aktif dengan status `Takeoff` atau `Landed`
 - persistence mission track memakai anchor `mission_history.id`, bukan `mission_id`
 - jika tidak ada mission aktif, telemetry tetap dibroadcast tetapi tidak membuat track point baru
 - backend throttling track point: simpan titik pertama, lalu titik berikutnya hanya jika jeda `>= 1 detik` atau perpindahan `>= 3 meter`
-- track mission terakhir dipertahankan setelah mission terminal, lalu dibersihkan saat mission berikutnya `start`
+- track setiap mission dipertahankan secara permanen berdasarkan `history_id` dan tidak dibersihkan saat mission berikutnya dimulai
 - HTTP realtime akan diteruskan ke subscriber WebSocket yang cocok
+- backend juga bisa broadcast status metric `notification` lewat WebSocket ketika notification baru dibuat; detail envelope realtime ada di [docs/WEBSOCKET_CONTRACT.md](/Users/macbook/Workdir/Office/Projects/drone/be-drone-mission/docs/WEBSOCKET_CONTRACT.md)
 
 UAV status update rules:
 - endpoint tetap `POST /realtime/telemetry`
@@ -290,7 +396,7 @@ UAV status update rules:
 - `battery_percent` bila dikirim harus berada di rentang `0..100`
 - `battery_voltage` bila dikirim harus `>= 0`
 - field yang tidak dikirim tidak meng-overwrite nilai lama pada row `uav_status`
-- backend selalu meng-update `last_heartbeat` dengan waktu server saat request diproses
+- backend selalu meng-update `last_heartbeat` dengan waktu server saat request diproses, mengikuti timezone `APP_TIMEZONE` (default `UTC`)
 - response mengembalikan status UAV terbaru yang tersimpan
 
 Contoh request `uav_status`:
@@ -334,7 +440,7 @@ Docking status update rules:
 - payload `docking_status` menerima `door_open`, `drone_present`, `charging`, `temperature`, `is_online`
 - `docking_id` boleh ikut dikirim pada payload bila request datang dari UAV token atau JWT; bila request datang dari docking token, backend memakai `docking_id` dari token
 - field yang tidak dikirim tidak meng-overwrite nilai lama pada row `docking_status`
-- backend selalu meng-update `last_heartbeat` dengan waktu server saat request diproses
+- backend selalu meng-update `last_heartbeat` dengan waktu server saat request diproses, mengikuti timezone `APP_TIMEZONE` (default `UTC`)
 - response mengembalikan status docking terbaru yang tersimpan
 
 Contoh request `docking_status`:
@@ -383,11 +489,11 @@ Mission track flow:
 2. backend membuat row `mission_history` aktif dan mengembalikan `history_id`
 3. UAV atau gateway mengirim telemetry posisi ke `POST /realtime/telemetry`
 4. backend mencari `mission_history` aktif untuk UAV singleton
-5. jika payload mengandung koordinat valid, backend menyimpan point ke `telemetry_track_points`
+5. jika payload mengandung koordinat valid dan status history `Takeoff` atau `Landed`, backend menyimpan point ke `telemetry_track_points`
 6. backend tetap broadcast event realtime ke WebSocket subscriber
-7. setelah mission terminal, track terakhir masih bisa diambil dari endpoint yang sama selama belum ada mission baru
-8. saat mission berikutnya `start`, backend menghapus track-track lama untuk UAV singleton lalu mulai track baru
-9. dashboard memanggil `GET /telemetry/track` untuk mengambil jejak yang sudah tersimpan
+7. dashboard memanggil `GET /telemetry/track` untuk track aktif atau track terbaru
+8. dashboard dapat memanggil `GET /mission-history/{history_id}/track` untuk track satu penerbangan tertentu
+9. waypoint dianggap tercapai secara berurutan ketika telemetry masuk radius `5 meter` dari waypoint
 10. dashboard lalu merge hasil fetch awal dengan stream WebSocket live
 
 ## Important Payload Notes
@@ -468,6 +574,8 @@ Contoh request `daily`:
       "latitude": 0.0,
       "longitude": 0.0,
       "altitude": 10.0,
+      "camera_tilt": -45.0,
+      "camera_yaw": 20.0,
       "action": "Take Picture",
       "action_duration": 5
     }
@@ -553,10 +661,12 @@ Contoh request `monthly`:
 - jika `first upcoming run` mission candidate masih berada di bawah `MISSION_MIN_GAP_MINUTES` dari `last_activity_at` history terakhir, create ditolak dengan `409 mission_recent_history_guard`
 - `last_activity_at` dihitung dari `completed_at`, atau fallback ke `started_at`, atau fallback ke `created_at`
 - row `mission_history` yang timestamp aktivitasnya berada di masa depan terhadap waktu server diabaikan oleh guard ini
+- history `Aborted` yang belum pernah mencapai state airborne (`Takeoff`/`InProgress`) tidak memicu recent-history guard; history tersebut tetap disimpan untuk audit
 - guard history terakhir ini adalah soft block: client boleh mengirim ulang request create yang sama dengan `confirm_recent_history_guard=true`
 - karena guard ini melihat `first upcoming run`, mission untuk hari berikutnya atau jam yang jauh sesudah `available_at` tetap bisa dibuat normal meskipun request create dilakukan lebih awal
 - jika scheduler valid tetapi semua occurrence sudah lewat, create akan ditolak dengan error `Schedule must produce a future run`
 - jika occurrence mission baru bentrok dengan mission lain dalam jarak `< 150 menit`, create akan ditolak dengan `409 mission_schedule_conflict`
+- occurrence yang sudah memiliki history terminal (`Completed`, `Failed`, atau `Aborted`) tidak lagi dihitung sebagai scheduler conflict, termasuk one-time mission yang abort sebelum jadwal
 - conflict scheduler adalah hard block dan tidak bisa di-bypass dengan `confirm_recent_history_guard`
 - jika create ditolak dengan `mission_schedule_conflict`, mission baru belum disimpan sama sekali
 - flow yang disarankan untuk conflict scheduler adalah preview dulu, adjust payload di client, lalu create ulang setelah preview bersih
@@ -569,6 +679,10 @@ Contoh request `monthly`:
 - `schedule_config`
 
 Jika `waypoints` dikirim, seluruh waypoint lama akan diganti penuh.
+
+Field waypoint:
+- `camera_tilt` opsional, satuan derajat, valid di range `-90` sampai `90`, default `0` jika tidak dikirim
+- `camera_yaw` opsional, satuan derajat, valid di range `-180` sampai `180`, default `0` jika tidak dikirim
 
 Contoh request:
 
@@ -591,6 +705,8 @@ Contoh request:
       "latitude": -6.2101,
       "longitude": 106.8291,
       "altitude": 25,
+      "camera_tilt": -35,
+      "camera_yaw": 15,
       "action": "Take Picture",
       "action_duration": 5
     },
@@ -599,6 +715,8 @@ Contoh request:
       "latitude": -6.2108,
       "longitude": 106.8302,
       "altitude": 30,
+      "camera_tilt": -60,
+      "camera_yaw": -45,
       "action": "Record Video",
       "action_duration": 3
     }
@@ -634,6 +752,8 @@ Contoh response sukses:
       "latitude": -6.2101,
       "longitude": 106.8291,
       "altitude": 25,
+      "camera_tilt": -35,
+      "camera_yaw": 15,
       "action": "Take Picture",
       "action_duration": 5
     },
@@ -644,6 +764,8 @@ Contoh response sukses:
       "latitude": -6.2108,
       "longitude": 106.8302,
       "altitude": 30,
+      "camera_tilt": -60,
+      "camera_yaw": -45,
       "action": "Record Video",
       "action_duration": 3
     }
@@ -692,6 +814,34 @@ Contoh response konflik jika mission sedang berjalan:
 ```json
 {
   "error": "mission is currently in progress"
+}
+```
+
+### Delete One Mission Occurrence
+
+`DELETE /missions/{id}/occurrences?run_at={RFC3339}` menghapus satu occurrence future dari scheduler mission tanpa menghapus template recurrent-nya.
+
+Contoh request:
+
+```http
+DELETE /missions/12/occurrences?run_at=2026-07-20T08%3A00%3A00%2B07%3A00
+Authorization: Bearer <JWT>
+```
+
+Rules:
+- `run_at` wajib cocok persis dengan occurrence yang dihasilkan scheduler mission
+- hanya occurrence di masa depan yang dapat dihapus
+- occurrence yang sudah memiliki `mission_history` tidak dapat dihapus
+- occurrence yang dihapus tidak membuat `mission_history` dan tidak ditampilkan oleh `GET /mission-runs`
+- occurrence recurrent lainnya tetap berjalan seperti biasa
+- jika occurrence yang dihapus adalah jadwal aktif berikutnya, field `schedule` mission dipindahkan ke occurrence aktif selanjutnya
+
+Contoh response sukses:
+
+```json
+{
+  "message": "Mission occurrence deleted successfully",
+  "run_at": "2026-07-20T08:00:00+07:00"
 }
 ```
 
@@ -902,6 +1052,8 @@ Body contoh:
       "latitude": -6.2101,
       "longitude": 106.8291,
       "altitude": 25,
+      "camera_tilt": -45,
+      "camera_yaw": 0,
       "action": "Take Picture",
       "action_duration": 5
     }
@@ -993,6 +1145,8 @@ Contoh create final setelah preview conflict:
       "latitude": -6.2101,
       "longitude": 106.8291,
       "altitude": 25,
+      "camera_tilt": -45,
+      "camera_yaw": 0,
       "action": "Take Picture",
       "action_duration": 5
     }
@@ -1202,6 +1356,41 @@ Notes:
 - recent-history guard hanya berlaku pada flow create mission
 - jadi jika mission berhasil dibuat lewat override `confirm_recent_history_guard=true`, mission itu tetap bisa di-start selama tidak kena block lain pada endpoint ini
 - block lain pada start tetap berlaku, misalnya masih ada mission aktif pada UAV yang sama, occurrence sudah di-skip oleh conflict resolution, atau occurrence kalah auto-priority
+
+### POST /mission-history/{history_id}/complete
+
+Request:
+
+```http
+POST /mission-history/55/complete
+Authorization: Bearer <JWT>
+Content-Type: application/json
+```
+
+Body contoh:
+
+```json
+{
+  "message": "Mission completed with minor notes"
+}
+```
+
+Response sukses:
+
+```json
+{
+  "message": "Mission completed",
+  "status": "Completed",
+  "mission_status": "Waiting"
+}
+```
+
+Notes:
+- endpoint ini dipakai untuk finalisasi status `Completed`
+- request body bersifat opsional
+- jika `message` dikirim dan tidak kosong, nilainya disimpan ke `mission_event.message` untuk event terminal `Completed`
+- jika `message` kosong atau tidak dikirim, backend memakai default message `Mission completed`
+- endpoint ini tetap mensyaratkan status `mission_history` saat ini adalah `DockConfirmed`
 
 ## GET Request/Response Reference
 
@@ -1566,6 +1755,8 @@ Query params:
 - `upcoming` salah satu `today` atau `later`
 - `days` integer positif, opsional, hanya untuk `upcoming=later`, default `21`
 
+Urutan response adalah `run_at DESC`, lalu `mission_created_at DESC`, lalu `mission_id DESC`. Dengan begitu mission pengganti terbaru tampil sebelum mission lama yang sudah berstatus `Skipped` ketika jadwalnya sama atau berdekatan.
+
 Contoh request untuk hari ini:
 
 ```http
@@ -1773,6 +1964,203 @@ Contoh response variatif untuk frontend:
       "mission_created_at": "2026-04-10T03:00:00Z"
     }
   ]
+}
+```
+
+### GET /notifications
+
+Dipakai user untuk mengambil notification aktif global pada UAV singleton.
+
+Query params:
+- `page`
+- `limit`
+- `uav_id` opsional; jika tidak dikirim backend memakai UAV singleton aktif
+
+Rules:
+- hanya mengembalikan notification dengan `deleted_at IS NULL`
+- hanya mengembalikan notification dengan `expires_at > now`
+- urutan response adalah `created_at DESC, id DESC`
+- response item membawa `is_read` dan `read_at`
+- state read/unread berlaku global untuk semua user
+
+Contoh request:
+
+```http
+GET /notifications?page=1&limit=20
+Authorization: Bearer <JWT>
+```
+
+Contoh response:
+
+```json
+{
+  "page": 1,
+  "limit": 20,
+  "total": 2,
+  "total_pages": 1,
+  "has_next": false,
+  "has_prev": false,
+  "next_page": null,
+  "prev_page": null,
+  "items": [
+    {
+      "id": 91,
+      "uav_id": 1,
+      "mission_id": 12,
+      "mission_name": "Tower Audit",
+      "history_id": 55,
+      "type": "mission_terminal",
+      "status": "Failed",
+      "title": "Mission failed: Tower Audit",
+      "body": "Takeoff validation failed during pre-arm checks.",
+      "is_read": false,
+      "payload": {
+        "history_id": 55,
+        "mission_id": 12,
+        "mission_name": "Tower Audit",
+        "status": "Failed",
+        "failure_code": "TAKEOFF_FAILED",
+        "failure_reason": "Takeoff validation failed during pre-arm checks."
+      },
+      "read_at": null,
+      "expires_at": "2026-07-08T09:15:00Z",
+      "created_at": "2026-07-07T09:15:00Z"
+    },
+    {
+      "id": 90,
+      "uav_id": 1,
+      "mission_id": 14,
+      "mission_name": "Morning Patrol",
+      "type": "mission_reminder",
+      "title": "Mission starts in 10 minutes",
+      "body": "Mission Morning Patrol is scheduled at 2026-07-07T10:00:00+07:00.",
+      "is_read": true,
+      "payload": {
+        "mission_id": 14,
+        "mission_name": "Morning Patrol",
+        "run_at": "2026-07-07T03:00:00Z",
+        "minutes": 10
+      },
+      "read_at": "2026-07-07T02:55:00Z",
+      "expires_at": "2026-07-08T03:00:00Z",
+      "created_at": "2026-07-07T02:50:00Z"
+    }
+  ]
+}
+```
+
+### GET /notifications/unread-count
+
+Dipakai frontend untuk menghitung badge notification global.
+
+Query params:
+- `uav_id` opsional; jika tidak dikirim backend memakai UAV singleton aktif
+- `type` opsional; nilai valid `mission_reminder` atau `mission_terminal`
+
+Rules:
+- hanya menghitung notification aktif yang `is_read=false`
+- notification yang sudah expired atau sudah dihapus tidak ikut dihitung
+
+Contoh request:
+
+```http
+GET /notifications/unread-count
+Authorization: Bearer <JWT>
+```
+
+Contoh response:
+
+```json
+{
+  "uav_id": 1,
+  "unread_count": 3
+}
+```
+
+Contoh response jika difilter per type:
+
+```http
+GET /notifications/unread-count?type=mission_terminal
+Authorization: Bearer <JWT>
+```
+
+```json
+{
+  "uav_id": 1,
+  "type": "mission_terminal",
+  "unread_count": 2
+}
+```
+
+### PATCH /notifications/read
+
+Dipakai frontend untuk mark read notification yang benar-benar sedang terlihat pada page aktif.
+
+Request body:
+
+```json
+{
+  "ids": [91, 90, 89]
+}
+```
+
+Rules:
+- endpoint ini tidak memakai `read-all`
+- backend hanya mark `ids` yang cocok dengan `uav_id` request, belum deleted, belum expired, dan masih `is_read=false`
+- cocok untuk pagination karena FE bisa kirim hanya item yang sedang visible pada page saat ini
+
+Contoh request:
+
+```http
+PATCH /notifications/read
+Authorization: Bearer <JWT>
+Content-Type: application/json
+```
+
+```json
+{
+  "ids": [91, 90, 89]
+}
+```
+
+Contoh response sukses:
+
+```json
+{
+  "message": "Notifications marked as read",
+  "uav_id": 1,
+  "updated_count": 3
+}
+```
+
+### DELETE /notifications/{id}
+
+Menghapus satu notification secara global untuk semua user login.
+
+Rules:
+- delete dilakukan sebagai soft delete dengan mengisi `deleted_at`
+- jika notification sudah expired atau sudah pernah dihapus, backend mengembalikan `404`
+
+Contoh request:
+
+```http
+DELETE /notifications/91
+Authorization: Bearer <JWT>
+```
+
+Contoh response sukses:
+
+```json
+{
+  "message": "Notification deleted"
+}
+```
+
+Contoh response jika notification tidak ditemukan:
+
+```json
+{
+  "message": "Notification not found"
 }
 ```
 
@@ -2045,6 +2433,8 @@ Query params:
 - `limit`
 - `mission_id`
 - `mission_name` partial match, case-insensitive
+- `sort_by` optional: `schedule`, `created_at`, `updated_at`
+- `sort_order` optional: `asc`, `desc`
 
 Catatan field item:
 - `waypoint_count` dihitung dari `mission_snapshot.waypoints`
@@ -2055,10 +2445,21 @@ Catatan field item:
 - `has_full_video` bernilai `true` bila mission history memiliki media dengan `media_role=full_video`
 - `uav_home_latitude` dan `uav_home_longitude` adalah home point UAV yang dibekukan saat history run dibuat
 
+Catatan field response:
+- `statuses` berisi total history per nilai `status` setelah semua filter query diterapkan
+- key pada `statuses` mengikuti nilai status yang tersimpan di backend, misalnya `Completed`, `Failed`, `Aborted`, `InProgress`
+
+Aturan sorting:
+- tanpa `sort_by`, backend memakai urutan default: mission aktif lebih dulu, lalu history terminal terbaru
+- `sort_by=schedule` mengacu ke field `scheduled_run_at`
+- `sort_by=created_at` mengacu ke field `created_at`
+- `sort_by=updated_at` mengacu ke latest runtime activity timestamp dengan fallback `completed_at`, lalu `started_at`, lalu `created_at`
+- jika `sort_by` dikirim tetapi `sort_order` tidak dikirim, backend default ke `desc`
+
 Request:
 
 ```http
-GET /mission-history?page=1&limit=20&mission_id=12&mission_name=Weekly
+GET /mission-history?page=1&limit=20&mission_id=12&mission_name=Weekly&sort_by=updated_at&sort_order=desc
 Authorization: Bearer <JWT>
 ```
 
@@ -2068,12 +2469,18 @@ Response:
 {
   "page": 1,
   "limit": 20,
-  "total": 1,
+  "total": 7,
   "total_pages": 1,
   "has_next": false,
   "has_prev": false,
   "next_page": null,
   "prev_page": null,
+  "statuses": {
+    "Completed": 3,
+    "Failed": 2,
+    "Aborted": 1,
+    "InProgress": 1
+  },
   "items": [
     {
       "id": 55,
@@ -2141,6 +2548,87 @@ Response:
   "last_event_at": "2026-04-18T08:14:11Z"
 }
 ```
+
+### GET /mission-history/{history_id}/track
+
+Mengembalikan planned waypoint dan actual trajectory untuk satu mission run. Data rencana diambil dari `mission_snapshot`, sehingga tidak berubah bila template mission diedit setelah penerbangan.
+
+Request:
+
+```http
+GET /mission-history/55/track
+Authorization: Bearer <JWT>
+```
+
+Device token UAV atau docking yang terhubung dengan history tersebut juga dapat mengakses endpoint ini.
+
+Response:
+
+```json
+{
+  "history_id": 55,
+  "mission_id": 12,
+  "uav_id": 1,
+  "status": "Completed",
+  "started_at": "2026-04-18T08:00:01Z",
+  "completed_at": "2026-04-18T08:14:11Z",
+  "takeoff_point": {
+    "recorded_at": "2026-04-18T08:00:05Z",
+    "latitude": -6.2105,
+    "longitude": 106.8296,
+    "altitude": 1.2,
+    "heading": 90
+  },
+  "landing_point": {
+    "recorded_at": "2026-04-18T08:13:55Z",
+    "latitude": -6.2106,
+    "longitude": 106.8295,
+    "altitude": 0.2,
+    "heading": 270
+  },
+  "last_recorded_at": "2026-04-18T08:13:55Z",
+  "waypoint_reach_radius_meter": 5,
+  "waypoints": [
+    {
+      "id": 301,
+      "mission_id": 12,
+      "sequence_order": 1,
+      "latitude": -6.211,
+      "longitude": 106.83,
+      "altitude": 25,
+      "camera_tilt": -45,
+      "camera_yaw": 90,
+      "action": "Take Picture",
+      "action_duration": 5,
+      "reached": true,
+      "reached_at": "2026-04-18T08:05:10Z"
+    }
+  ],
+  "points": [
+    {
+      "recorded_at": "2026-04-18T08:00:05Z",
+      "latitude": -6.2105,
+      "longitude": 106.8296,
+      "altitude": 1.2,
+      "heading": 90
+    }
+  ]
+}
+```
+
+Rules:
+- `takeoff_point` adalah actual telemetry pertama yang tersimpan setelah history berstatus `Takeoff`
+- khusus history berstatus `Failed` atau `Aborted` tanpa actual telemetry, `takeoff_point` memakai fallback `uav_home_latitude` dan `uav_home_longitude` yang dibekukan saat mission dimulai, dengan `recorded_at` dari `started_at`; fallback ini tidak ditambahkan ke `points`
+- `landing_point` adalah actual telemetry terakhir dan hanya ditampilkan ketika status history `Landed`, `DockConfirmed`, atau `Completed`
+- `waypoints` adalah planned route dari snapshot dan selalu diurutkan berdasarkan `sequence_order`
+- `points` adalah actual trajectory dan selalu diurutkan ascending berdasarkan `recorded_at`
+- `reached=true` jika actual trajectory masuk dalam `waypoint_reach_radius_meter`, saat ini `5 meter`
+- waypoint dievaluasi berurutan; waypoint berikutnya tidak dapat tercapai sebelum waypoint sebelumnya
+- `reached_at` adalah waktu actual track point pertama yang memenuhi radius waypoint
+- status waypoint dihitung dari track permanen sehingga konsisten ketika endpoint dipanggil ulang
+- history tanpa snapshot atau waypoint mengembalikan `waypoints: []`
+- history tanpa telemetry mengembalikan `points: []` dan tidak menampilkan takeoff/landing point
+- endpoint dan penyimpanan waypoint progress tidak membutuhkan migration baru; schema target harus sudah memiliki tabel dari `20260421_add_telemetry_track_points.sql`
 
 ### GET /mission-history/{history_id}/events
 
@@ -2413,6 +2901,30 @@ Response saat ada mission aktif:
   "mission_id": 12,
   "started_at": "2026-04-21T10:12:01Z",
   "last_recorded_at": "2026-04-21T10:25:44Z",
+  "takeoff_point": {
+    "recorded_at": "2026-04-21T10:12:05Z",
+    "latitude": -6.201,
+    "longitude": 106.817,
+    "altitude": 1.2,
+    "heading": 90
+  },
+  "waypoint_reach_radius_meter": 5,
+  "waypoints": [
+    {
+      "id": 301,
+      "mission_id": 12,
+      "sequence_order": 1,
+      "latitude": -6.202,
+      "longitude": 106.818,
+      "altitude": 30,
+      "camera_tilt": -45,
+      "camera_yaw": 0,
+      "action": "Take Picture",
+      "action_duration": 5,
+      "reached": true,
+      "reached_at": "2026-04-21T10:20:10Z"
+    }
+  ],
   "points": [
     {
       "recorded_at": "2026-04-21T10:12:05Z",
@@ -2433,6 +2945,22 @@ Response saat tidak ada mission aktif tetapi track mission terakhir masih tersed
   "mission_id": 12,
   "started_at": "2026-04-21T10:12:01Z",
   "last_recorded_at": "2026-04-21T10:25:44Z",
+  "takeoff_point": {
+    "recorded_at": "2026-04-21T10:12:05Z",
+    "latitude": -6.201,
+    "longitude": 106.817,
+    "altitude": 1.2,
+    "heading": 90
+  },
+  "landing_point": {
+    "recorded_at": "2026-04-21T10:25:44Z",
+    "latitude": -6.2011,
+    "longitude": 106.8171,
+    "altitude": 0.2,
+    "heading": 270
+  },
+  "waypoint_reach_radius_meter": 5,
+  "waypoints": [],
   "points": [
     {
       "recorded_at": "2026-04-21T10:12:05Z",
@@ -2453,6 +2981,8 @@ Response saat tidak ada mission aktif dan tidak ada track tersimpan:
   "mission_id": null,
   "started_at": null,
   "last_recorded_at": null,
+  "waypoint_reach_radius_meter": 5,
+  "waypoints": [],
   "points": []
 }
 ```
@@ -2464,7 +2994,9 @@ Rules:
 - `history_id` adalah anchor utama untuk seluruh track point yang dikembalikan
 - `last_recorded_at` adalah `recorded_at` dari titik terakhir yang tersimpan, bukan timestamp WebSocket terakhir
 - urutan `points` selalu ascending berdasarkan `recorded_at`
-- track mission terakhir tetap tersedia sampai mission berikutnya `start`
+- `waypoints` berasal dari `mission_snapshot` dan membawa flag `reached` serta `reached_at`
+- waypoint ditandai tercapai secara berurutan ketika actual telemetry masuk radius `waypoint_reach_radius_meter`
+- seluruh track history dipertahankan saat mission berikutnya dimulai; fallback endpoint ini memilih history terbaru yang mempunyai track
 
 Telemetry payload fields yang dikenali untuk persistence track:
 - koordinat: `latitude` atau `lat`, dan `longitude` atau `lng` atau `lon`
