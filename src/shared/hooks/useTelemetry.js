@@ -172,12 +172,35 @@ export default function useTelemetry(uavIds = []) {
                         const isChanged = prevStatus !== payload.runtime_status;
                         const isLanded = payload.runtime_status === 'Landed';
 
-                        if (isChanged || isLanded) {
+                        if (isChanged) {
                             console.log(`[Telemetry] mission_status runtime_status for UAV ${uav_id}: ${prevStatus || 'N/A'} → ${payload.runtime_status}`);
                             lastRuntimeStatusRef.current[uav_id] = payload.runtime_status;
 
-                            if (isLanded) {
-                                // Wait 10s before refreshing so backend can finalize
+                            if (payload.runtime_status === 'Takeoff') {
+                                // Auto-start recording
+                                const msg = JSON.stringify({
+                                    type: 'publish',
+                                    uav_id: uav_id,
+                                    kind: 'telemetry',
+                                    metric: 'camera_command',
+                                    payload: { command: 'set_recording', enabled: true }
+                                });
+                                ws.send(msg);
+                                console.log(`[Telemetry] Auto-start recording for UAV ${uav_id} (Takeoff)`);
+                                setMissionStatusVersion(v => v + 1);
+                            } else if (isLanded) {
+                                // Auto-stop recording
+                                const msg = JSON.stringify({
+                                    type: 'publish',
+                                    uav_id: uav_id,
+                                    kind: 'telemetry',
+                                    metric: 'camera_command',
+                                    payload: { command: 'set_recording', enabled: false }
+                                });
+                                ws.send(msg);
+                                console.log(`[Telemetry] Auto-stop recording for UAV ${uav_id} (Landed)`);
+
+                                // Wait 5s before refreshing so backend can finalize
                                 if (landedTimerRef.current) clearTimeout(landedTimerRef.current);
                                 landedTimerRef.current = setTimeout(() => {
                                     if (isMounted.current) {

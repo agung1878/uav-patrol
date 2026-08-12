@@ -6,6 +6,7 @@ import useTelemetry from '../../../shared/hooks/useTelemetry';
 import { uavService } from '../../../services/api';
 import useDockStream from '../../../shared/hooks/useDockStream';
 import useWeather from '../../../shared/hooks/useWeather';
+import CustomDialog from '../../../shared/components/CustomDialog';
 
 // Mock components for the right sidebar and controls
 const DockCamPanel = () => {
@@ -240,6 +241,7 @@ const DPadControl = ({ onZoomIn, onZoomOut, onZoomStop, onArrow, onArrowStop, on
 export default function ActiveMissionPage() {
     const { videoStream, isStreaming, isConnecting, streamError, detections } = useDetectionStream();
     const [isSwapped, setIsSwapped] = useState(false);
+    const [showAbortDialog, setShowAbortDialog] = useState(false);
 
     // Fetch active drones to subscribe to their telemetry
     const [drones, setDrones] = useState([]);
@@ -418,6 +420,28 @@ export default function ActiveMissionPage() {
         setTimeout(() => setPhotoFlash(false), 300);
     }, [selectedUavId, publish]);
 
+    const handleAbortMission = useCallback(() => {
+        const historyId = selectedTelemetry?.mission_status?.history_id;
+        if (!selectedUavId || !historyId) {
+            console.warn('Cannot abort: missing UAV ID or history ID', { selectedUavId, historyId });
+            return;
+        }
+        
+        setShowAbortDialog(true);
+    }, [selectedUavId, selectedTelemetry?.mission_status?.history_id]);
+
+    const executeAbortMission = useCallback(() => {
+        const historyId = selectedTelemetry?.mission_status?.history_id;
+        if (!selectedUavId || !historyId) return;
+
+        publish(selectedUavId, 'mission_event', {
+            history_id: historyId,
+            event: 'mission_aborted',
+            message: 'frontend_abort_request'
+        });
+        setShowAbortDialog(false);
+    }, [selectedUavId, selectedTelemetry?.mission_status?.history_id, publish]);
+
     return (
         <div
             className="p-[28px] flex flex-col gap-[20px] w-full h-[calc(100vh-104px)] overflow-hidden"
@@ -570,7 +594,10 @@ export default function ActiveMissionPage() {
                             </div>
 
                             {/* Abort Mission */}
-                            <button className="w-full h-[46px] hover:brightness-110 tracking-[0.05em] text-[14px] rounded-[10px] transition-all active:scale-[0.98] overflow-hidden relative">
+                            <button 
+                                onClick={handleAbortMission}
+                                className="w-full h-[46px] hover:brightness-110 tracking-[0.05em] text-[14px] rounded-[10px] transition-all active:scale-[0.98] overflow-hidden relative"
+                            >
                                 <img src="/images/btn_abort_mission.png" alt="Abort Mission" className="absolute inset-0 w-full h-full object-cover" />
                             </button>
                         </div>
@@ -650,6 +677,30 @@ export default function ActiveMissionPage() {
             {photoFlash && (
                 <div className="fixed inset-0 bg-white/30 z-[9999] pointer-events-none animate-[flashFade_0.3s_ease-out_forwards]" />
             )}
+
+            {/* Abort Mission Dialog */}
+            <CustomDialog
+                isOpen={showAbortDialog}
+                onClose={() => setShowAbortDialog(false)}
+                title="Abort Mission"
+                footer={
+                    <>
+                        <button onClick={() => setShowAbortDialog(false)} className="px-4 py-2 text-gray-300 hover:bg-[#252b36] rounded transition-colors text-[13px] font-medium border border-gray-600">Cancel</button>
+                        <button onClick={executeAbortMission} className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded transition-colors shadow-[0_0_15px_rgba(220,38,38,0.3)] text-[13px] font-bold">Yes, Abort Mission</button>
+                    </>
+                }
+            >
+                <div className="flex flex-col gap-3">
+                    <p className="text-[14px]">Are you sure you want to abort the current mission?</p>
+                    <div className="flex items-start gap-2 bg-red-900/20 border border-red-500/20 p-3 rounded text-red-200">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                        <p className="text-[12px] leading-relaxed">
+                            This action will instruct the UAV to immediately abort its current trajectory. 
+                            If it is airborne, it will fallback to its Return-to-Launch (RTL) protocol. This action cannot be undone.
+                        </p>
+                    </div>
+                </div>
+            </CustomDialog>
         </div>
     );
 }

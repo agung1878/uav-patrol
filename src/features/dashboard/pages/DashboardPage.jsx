@@ -104,7 +104,7 @@ export default function DashboardPage() {
         // Re-check every 30 seconds
         const interval = setInterval(fetchActiveMission, 30000);
         return () => clearInterval(interval);
-    }, [selectedDrone?.id, manualRefreshCounter]);
+    }, [selectedDrone?.id, manualRefreshCounter, missionStatusVersion]);
 
     // Stream manager — watches vehicle_state and auto-starts/stops stream + WebRTC
     const { videoStream, isStreaming, isConnecting, streamError } = useDetectionStream();
@@ -297,12 +297,13 @@ export default function DashboardPage() {
                         const { type, takeoffAltitude, flightAltitude, holdDuration, roiPosition, spiralWaypoints } = launchData;
                         console.log('[QuickLaunch] Launching:', JSON.stringify(launchData, null, 2));
 
-                        // Build "now" schedule (2 minutes from now)
+                        // Build "now" schedule
+                        const offsetMinutes = parseInt(import.meta.env.VITE_QUICK_LAUNCH_OFFSET_MINUTES) || 5;
                         const pad = (n) => String(n).padStart(2, '0');
                         const offset = new Date().getTimezoneOffset();
                         const sign = offset <= 0 ? '+' : '-';
                         const tzOffset = `${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
-                        const now = new Date(Date.now() + 2 * 60 * 1000);
+                        const now = new Date(Date.now() + offsetMinutes * 60 * 1000);
                         const runAt = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:00${tzOffset}`;
 
                         const missionData = {
