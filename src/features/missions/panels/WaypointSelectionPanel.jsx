@@ -26,7 +26,7 @@ export default function WaypointSelectionPanel({
         reader.readAsText(file);
     };
 
-    const getPointData = (id) => waypointsData[id] || { altitude: 15, camera_tilt: -45, camera_yaw: 0, action: 'Take Picture', action_duration: 5 };
+    const getPointData = (id) => waypointsData[id] || { altitude: 50, camera_tilt: -45, camera_yaw: 0, action: 'Take Picture', action_duration: 5 };
 
     return (
         <div className="w-full h-full bg-[#1c222c] p-5 flex flex-col select-none">

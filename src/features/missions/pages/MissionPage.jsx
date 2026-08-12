@@ -85,7 +85,7 @@ export default function MissionPage() {
     const handleWaypointDataChange = (id, field, value) => {
         setWaypointsData(prev => ({
             ...prev,
-            [id]: { ...(prev[id] || { altitude: 15, action: 'Take Picture', action_duration: 5 }), [field]: value }
+            [id]: { ...(prev[id] || { altitude: 50, action: 'Take Picture', action_duration: 5 }), [field]: value }
         }));
     };
 
@@ -146,7 +146,7 @@ export default function MissionPage() {
 
                 newWaypoints.push({ id: currentId, lat: wp.latitude, lng: wp.longitude });
                 newWaypointsData[currentId] = {
-                    altitude: wp.altitude ?? 15,
+                    altitude: wp.altitude ?? 50,
                     camera_tilt: wp.camera_tilt ?? -45,
                     camera_yaw: wp.camera_yaw ?? 0,
                     action: wp.action || 'Take Picture',
@@ -170,7 +170,7 @@ export default function MissionPage() {
             return {
                 latitude: wp.lat,
                 longitude: wp.lng,
-                altitude: parseFloat(data.altitude) || 15.0,
+                altitude: parseFloat(data.altitude) || 50.0,
                 camera_tilt: data.camera_tilt !== undefined ? parseFloat(data.camera_tilt) : -45.0,
                 camera_yaw: data.camera_yaw !== undefined ? parseFloat(data.camera_yaw) : 0.0,
                 action: data.action || 'Take Picture',
@@ -221,7 +221,7 @@ export default function MissionPage() {
                 sequence_order: index + 1,
                 latitude: wp.lat,
                 longitude: wp.lng,
-                altitude: parseFloat(data.altitude) || 10.0,
+                altitude: parseFloat(data.altitude) || 50.0,
                 camera_tilt: data.camera_tilt !== undefined ? parseFloat(data.camera_tilt) : -45.0,
                 camera_yaw: data.camera_yaw !== undefined ? parseFloat(data.camera_yaw) : 0.0,
                 action: data.action || 'Take Picture',
@@ -231,7 +231,7 @@ export default function MissionPage() {
 
         const missionData = {
             mission_name: missionName || 'Untitled Mission',
-            takeoff_altitude: parseFloat(takeoffAltitude) || 20,
+            takeoff_altitude: parseFloat(takeoffAltitude) || 50,
             status: 'Waiting',
             schedule_timezone: 'Asia/Jakarta',
             waypoints: waypointPayloads
@@ -300,6 +300,23 @@ export default function MissionPage() {
 
         if (!selectedUavId) { setSubmitError('Please select a UAV'); return; }
         if (waypoints.length === 0) { setSubmitError('Please add at least one waypoint'); return; }
+        
+        const parsedTakeoff = parseFloat(formData.takeoffAltitude);
+        if (isNaN(parsedTakeoff) || parsedTakeoff < 50) {
+            setSubmitError('Takeoff altitude must be at least 50m');
+            return;
+        }
+
+        const invalidWp = waypoints.find(wp => {
+            const data = waypointsData[wp.id] || {};
+            const wpAlt = parseFloat(data.altitude) || 50.0;
+            return wpAlt < 50;
+        });
+        if (invalidWp) {
+            setSubmitError(`Waypoint ${invalidWp.id} altitude must be at least 50m`);
+            return;
+        }
+
         if (timeMode === 'One time' && !scheduleDate) { setSubmitError('Please select a date for one-time schedule'); return; }
         if (timeMode === 'Recurrent') {
             if (recurrentType === 'daily' && !dailyStartDate) { setSubmitError('Please select a start date for daily schedule'); return; }

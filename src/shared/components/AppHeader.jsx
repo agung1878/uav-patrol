@@ -168,7 +168,7 @@ export default function AppHeader() {
     const dateStr = `${currentTime.getDate()} ${months[currentTime.getMonth()]}`;
 
     return (
-        <header className="flex flex-row items-center justify-between px-4 py-2 bg-[#2c3340] h-[104px] shadow-sm select-none relative z-50">
+        <header className="flex flex-row items-center justify-between px-4 py-2 bg-[#2c3340] h-[104px] shadow-sm select-none relative z-[9999]">
 
             {/* Left Section - Branding and Navigation */}
             <div className="flex items-center space-x-10 h-full">
@@ -234,7 +234,7 @@ export default function AppHeader() {
                                         ${isActive ? 'text-[#ea580c] bg-[#252b36]/50 border-[#ea580c]' : 'text-gray-200 hover:bg-[#252b36] border-transparent hover:text-white'}
                                     `}
                                 >
-                                    Docking Panel
+                                    Controller Docking
                                 </NavLink>
                                 <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
                                 <button

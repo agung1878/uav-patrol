@@ -22,10 +22,11 @@ export default function MissionDetailPanel({
     onExportWaypoints
 }) {
     const [missionName, setMissionName] = useState('');
-    const [takeoffAltitude, setTakeoffAltitude] = useState('');
+    const [takeoffAltitude, setTakeoffAltitude] = useState('50');
     const [takeoffHoldDuration, setTakeoffHoldDuration] = useState('');
     const [timeMode, setTimeMode] = useState('One time');
-    const [scheduleDate, setScheduleDate] = useState('2026-05-20');
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const [scheduleDate, setScheduleDate] = useState(todayDateStr);
     const [scheduleTime, setScheduleTime] = useState('');
 
     // ROI fields
@@ -37,8 +38,8 @@ export default function MissionDetailPanel({
     const [recurrenceInterval, setRecurrenceInterval] = useState('1');
 
     // Daily fields
-    const [dailyStartDate, setDailyStartDate] = useState('2026-05-20');
-    const [dailyEndDate, setDailyEndDate] = useState('2026-05-20');
+    const [dailyStartDate, setDailyStartDate] = useState(todayDateStr);
+    const [dailyEndDate, setDailyEndDate] = useState(todayDateStr);
     const [dailyRepeatTimes, setDailyRepeatTimes] = useState(['09:00']);
 
     // Weekly fields
@@ -199,7 +200,7 @@ export default function MissionDetailPanel({
                             <input
                                 type="number"
                                 className="bg-transparent text-gray-100 text-[13px] outline-none w-full"
-                                placeholder="15"
+                                placeholder="50"
                                 value={takeoffAltitude}
                                 onChange={(e) => setTakeoffAltitude(e.target.value)}
                             />
