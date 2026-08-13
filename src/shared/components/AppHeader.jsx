@@ -40,14 +40,21 @@ const SignalRender = ({ level, label }) => {
     );
 };
 
-const BatteryVertical = ({ level = 80 }) => (
-    <div className="flex flex-col items-center justify-end h-7 w-4">
-        <div className="w-[6px] h-[2px] bg-gray-300 rounded-t-[1px]" />
-        <div className="w-[16px] h-[22px] border-[1.5px] border-gray-300 rounded-[2px] p-[1.5px] flex flex-col justify-end">
+const BatteryVertical = ({ level = 80, isCharging = false }) => (
+    <div className="flex flex-col items-center justify-end h-7 w-4 relative">
+        <div className="w-[6px] h-[2px] bg-gray-400 rounded-t-[1px]" />
+        <div className="w-[16px] h-[22px] border-[1.5px] border-gray-400 rounded-[2px] p-[1.5px] flex flex-col justify-end relative overflow-hidden bg-transparent">
             <div
-                className="w-full bg-white rounded-[1px]"
+                className={`w-full rounded-[1px] transition-all duration-300 ${isCharging ? 'bg-[#eab308]' : 'bg-white'}`}
                 style={{ height: `${level}%` }}
             />
+            {isCharging && (
+                <div className="absolute inset-0 flex items-center justify-center top-[1px]">
+                    <svg width="10" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" className="text-yellow-800">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+            )}
         </div>
     </div>
 );
@@ -66,6 +73,7 @@ export default function AppHeader() {
 
     const [currentTime, setCurrentTime] = useState(new Date());
     const [uavIds, setUavIds] = useState([]);
+    const [uavData, setUavData] = useState(null);
 
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -77,12 +85,15 @@ export default function AppHeader() {
         navigate('/login');
     };
 
-    // Fetch UAV on mount to get ID for telemetry subscription
+    // Fetch UAV on mount to get ID for telemetry subscription and fallback status
     useEffect(() => {
         const fetchUav = async () => {
             try {
                 const data = await uavService.getUav();
-                if (data && data.id) setUavIds([data.id]);
+                if (data && data.id) {
+                    setUavIds([data.id]);
+                    setUavData(data);
+                }
             } catch (err) {
                 console.error('[AppHeader] Failed to fetch UAV:', err);
             }
@@ -101,9 +112,16 @@ export default function AppHeader() {
 
     // Battery metric: { percent, voltage, temperature, ... }
     const battery = uavTelemetry.battery || {};
-    const batteryPercent = battery.percent != null ? Math.round(battery.percent) : '--';
-    const batteryVoltage = battery.voltage != null ? battery.voltage.toFixed(1) : '--';
+    const batteryPercent = battery.percent != null 
+        ? Math.round(battery.percent) 
+        : (uavData?.status?.battery_percent != null ? Math.round(uavData.status.battery_percent) : '--');
+    const batteryVoltage = battery.voltage != null 
+        ? battery.voltage.toFixed(1) 
+        : (uavData?.status?.battery_voltage != null ? uavData.status.battery_voltage.toFixed(1) : '--');
     const batteryTemp = battery.temperature != null ? `${Math.round(battery.temperature)}°C` : '--';
+
+    const dockingStatus = uavTelemetry.docking_status || {};
+    const isCharging = dockingStatus.charging || false;
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -269,7 +287,7 @@ export default function AppHeader() {
                 {/* Battery */}
                 <div className="flex items-center space-x-2">
                     <span className="text-[22px] font-semibold tracking-tighter text-white">{batteryPercent !== '--' ? `${batteryPercent}%` : '--%'}</span>
-                    <BatteryVertical level={typeof batteryPercent === 'number' ? batteryPercent : 0} />
+                    <BatteryVertical level={typeof batteryPercent === 'number' ? batteryPercent : 0} isCharging={isCharging} />
                     <div className="flex flex-col text-[10px] font-semibold text-gray-100 leading-[1.15] space-y-[1px] ml-1">
                         <span>{batteryTemp}</span>
                         <span>{batteryVoltage !== '--' ? `${batteryVoltage}V` : '--'}</span>

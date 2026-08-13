@@ -12,6 +12,28 @@ export default function DroneInfoPanel({
     isTelemetryConnected = false
 }) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isDroneLive, setIsDroneLive] = useState(false);
+
+    // Track drone online status based on telemetry heartbeat
+    React.useEffect(() => {
+        if (!isTelemetryConnected) {
+            setIsDroneLive(false);
+            return;
+        }
+
+        const checkAlive = () => {
+            if (telemetry?.last_update) {
+                const diff = Date.now() - telemetry.last_update;
+                setIsDroneLive(diff < 10000);
+            } else {
+                setIsDroneLive(false);
+            }
+        };
+
+        checkAlive();
+        const interval = setInterval(checkAlive, 2000);
+        return () => clearInterval(interval);
+    }, [isTelemetryConnected, telemetry?.last_update]);
 
     // Extract telemetry from metric-keyed structure
     const location = telemetry?.location || {};
@@ -103,9 +125,9 @@ export default function DroneInfoPanel({
                             </a>
                             {/* Telemetry connection indicator */}
                             <div className="flex items-center gap-1">
-                                <div className={`w-1.5 h-1.5 rounded-full ${isTelemetryConnected ? 'bg-[#1ab394] animate-pulse' : 'bg-gray-600'}`}></div>
-                                <span className={`text-[9px] font-mono ${isTelemetryConnected ? 'text-[#1ab394]' : 'text-gray-600'}`}>
-                                    {isTelemetryConnected ? 'LIVE' : 'OFFLINE'}
+                                <div className={`w-1.5 h-1.5 rounded-full ${isDroneLive ? 'bg-[#1ab394] animate-pulse' : 'bg-gray-600'}`}></div>
+                                <span className={`text-[9px] font-mono ${isDroneLive ? 'text-[#1ab394]' : 'text-gray-600'}`}>
+                                    {isDroneLive ? 'LIVE' : 'OFFLINE'}
                                 </span>
                             </div>
                         </div>
@@ -254,10 +276,10 @@ export default function DroneInfoPanel({
 
                     {/* Flight Mode Footer */}
                     <div className="flex justify-between items-center mt-2 px-1">
-                        <span className={`text-[10px] font-medium tracking-wide ${isTelemetryConnected ? 'text-[#1ab394]' : 'text-gray-600'}`}>
+                        <span className={`text-[10px] font-medium tracking-wide ${isDroneLive ? 'text-[#1ab394]' : 'text-gray-600'}`}>
                             {flightMode
                                 ? `${flightMode}${isArmed ? ' • Armed' : ' • Disarmed'}`
-                                : (isTelemetryConnected ? 'Awaiting data...' : 'Disconnected')}
+                                : (isDroneLive ? 'Awaiting data...' : 'Disconnected')}
                         </span>
                         {landedState && (
                             <span className="text-[9px] font-mono text-gray-500">{landedState}</span>

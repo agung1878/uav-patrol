@@ -7,7 +7,8 @@ export default function StreamButtonPanel({ onLaunchClick, isStreaming, upcoming
     // States: 'idle', 'countdown', 'waiting_drone', 'streaming'
     const [panelState, setPanelState] = useState(() => {
         const runtime = selectedTelemetry?.mission_status?.runtime_status;
-        const hasRunningMission = activeMission || (runtime && runtime !== 'Completed' && runtime !== 'PreparingDock' && runtime !== 'Idle' && runtime !== 'Waiting');
+        const isEndedRuntime = runtime === 'Completed' || runtime === 'Landed' || runtime === 'DockConfirmed' || runtime === 'Idle' || runtime === 'Waiting' || runtime === 'PreparingDock';
+        const hasRunningMission = activeMission || (runtime && !isEndedRuntime);
         if (hasRunningMission) return 'streaming';
         return 'idle';
     });
@@ -19,11 +20,13 @@ export default function StreamButtonPanel({ onLaunchClick, isStreaming, upcoming
         const missionEvent = selectedTelemetry?.mission_event;
         const runtime = missionStatus?.runtime_status;
 
-        if (runtime === 'Completed') {
+        const isEndedRuntime = runtime === 'Completed' || runtime === 'Landed' || runtime === 'DockConfirmed' || runtime === 'Idle' || runtime === 'Waiting' || runtime === 'PreparingDock';
+
+        if (!activeMission && (isEndedRuntime || !runtime)) {
             setPanelState('idle');
         } else if (missionEvent?.event === 'takeoff') {
             setPanelState('streaming');
-        } else if (activeMission || (runtime && runtime !== 'Completed' && runtime !== 'PreparingDock' && runtime !== 'Idle' && runtime !== 'Waiting')) {
+        } else if (activeMission || (runtime && !isEndedRuntime)) {
             // Restore streaming state if remounted while mission is already running
             setPanelState('streaming');
         }
@@ -33,7 +36,8 @@ export default function StreamButtonPanel({ onLaunchClick, isStreaming, upcoming
     useEffect(() => {
         if (isStreaming && panelState !== 'streaming') {
             const runtime = selectedTelemetry?.mission_status?.runtime_status;
-            const hasRunningMission = activeMission || (runtime && runtime !== 'Completed' && runtime !== 'PreparingDock' && runtime !== 'Idle' && runtime !== 'Waiting');
+            const isEndedRuntime = runtime === 'Completed' || runtime === 'Landed' || runtime === 'DockConfirmed' || runtime === 'Idle' || runtime === 'Waiting' || runtime === 'PreparingDock';
+            const hasRunningMission = activeMission || (runtime && !isEndedRuntime);
             if (hasRunningMission) {
                 setPanelState('streaming');
             }

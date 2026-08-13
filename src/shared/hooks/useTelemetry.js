@@ -218,7 +218,8 @@ export default function useTelemetry(uavIds = []) {
                         ...prev,
                         [uav_id]: {
                             ...(prev[uav_id] || {}),
-                            [metric]: payload
+                            [metric]: payload,
+                            last_update: Date.now()
                         }
                     }));
                 } catch (parseErr) {

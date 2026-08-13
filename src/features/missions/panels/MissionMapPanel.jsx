@@ -157,10 +157,17 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
         return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}  ${pad(d.getHours())}:${pad(d.getMinutes())}`;
     };
 
-    // Get drone position from telemetry
+    // Drone home from API (available before telemetry connects)
+    const droneHome = selectedDrone?.home_latitude && selectedDrone?.home_longitude
+        ? [selectedDrone.home_latitude, selectedDrone.home_longitude]
+        : null;
+
+    // Get drone position from telemetry or fallback to API home
     const location = telemetry?.location || {};
     const hasLocation = location.latitude != null && location.longitude != null;
-    const dronePosition = hasLocation ? [location.latitude, location.longitude] : null;
+    const dronePosition = hasLocation 
+        ? [location.latitude, location.longitude] 
+        : droneHome;
     const heading = location.heading ?? 0;
     const flightMode = telemetry?.vehicle_state?.mode || 'UNKNOWN';
 
@@ -208,11 +215,6 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
     // Home/dock position from telemetry (first known location)
     const dockPosition = homePosition || null;
 
-    // Drone home from API (available before telemetry connects)
-    const droneHome = selectedDrone?.home_latitude && selectedDrone?.home_longitude
-        ? [selectedDrone.home_latitude, selectedDrone.home_longitude]
-        : null;
-
     // Map center priority: drone > telemetry home > API home > default
     const mapCenter = dronePosition || dockPosition || droneHome || defaultCenter;
 
@@ -226,7 +228,7 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
 
     // Max range circle (use drone max_range or default 1800m)
     const maxRange = selectedDrone?.max_range_meter || 1800;
-    const circleCenter = dockPosition || dronePosition;
+    const circleCenter = dockPosition || dronePosition || droneHome;
 
     // Weather
     const weatherLat = circleCenter ? circleCenter[0] : defaultCenter[0];

@@ -290,15 +290,15 @@ export default function DockingPanelPage() {
                                     <div className="bg-[#14171d] border border-[#1e232e] rounded-lg p-3">
                                         <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2 text-center">Left Motor</div>
                                         <div className="flex gap-2 justify-center">
-                                            <button onClick={() => handleAction('left_motor_in')} className="flex-1 py-2 bg-[#252a35] hover:bg-[#2a303d] border border-[#313745] rounded flex justify-center transition-all"><ArrowRightIcon className="w-4 h-4 text-gray-300" /></button>
-                                            <button onClick={() => handleAction('left_motor_out')} className="flex-1 py-2 bg-[#252a35] hover:bg-[#2a303d] border border-[#313745] rounded flex justify-center transition-all"><ArrowLeftIcon className="w-4 h-4 text-gray-300" /></button>
+                                            <button onClick={() => handleAction('left_motor_in')} className="flex-1 py-2 bg-[#252a35] hover:bg-[#2a303d] border border-[#313745] rounded flex justify-center transition-all">IN</button>
+                                            <button onClick={() => handleAction('left_motor_out')} className="flex-1 py-2 bg-[#252a35] hover:bg-[#2a303d] border border-[#313745] rounded flex justify-center transition-all">OUT</button>
                                         </div>
                                     </div>
                                     <div className="bg-[#14171d] border border-[#1e232e] rounded-lg p-3">
                                         <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-2 text-center">Right Motor</div>
                                         <div className="flex gap-2 justify-center">
-                                            <button onClick={() => handleAction('right_motor_in')} className="flex-1 py-2 bg-[#252a35] hover:bg-[#2a303d] border border-[#313745] rounded flex justify-center transition-all"><ArrowLeftIcon className="w-4 h-4 text-gray-300" /></button>
-                                            <button onClick={() => handleAction('right_motor_out')} className="flex-1 py-2 bg-[#252a35] hover:bg-[#2a303d] border border-[#313745] rounded flex justify-center transition-all"><ArrowRightIcon className="w-4 h-4 text-gray-300" /></button>
+                                            <button onClick={() => handleAction('right_motor_in')} className="flex-1 py-2 bg-[#252a35] hover:bg-[#2a303d] border border-[#313745] rounded flex justify-center transition-all">IN</button>
+                                            <button onClick={() => handleAction('right_motor_out')} className="flex-1 py-2 bg-[#252a35] hover:bg-[#2a303d] border border-[#313745] rounded flex justify-center transition-all">OUT</button>
                                         </div>
                                     </div>
                                 </div>

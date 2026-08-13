@@ -94,12 +94,19 @@ function MapFollower({ position, shouldFollow }) {
 export default function MapViewPanel({ telemetry, selectedDrone, trajectory, homePosition, missionWaypoints, isSmallPanel = false }) {
     const defaultCenter = [-6.200000, 106.816666]; // Jakarta fallback
 
-    // Get drone position from telemetry
+    // Drone home from API
+    const droneHome = selectedDrone?.home_latitude && selectedDrone?.home_longitude
+        ? [selectedDrone.home_latitude, selectedDrone.home_longitude]
+        : (selectedDrone?.dockings?.[0]?.latitude && selectedDrone?.dockings?.[0]?.longitude
+            ? [selectedDrone.dockings[0].latitude, selectedDrone.dockings[0].longitude]
+            : null);
+
+    // Get drone position from telemetry or fallback to API home
     const location = telemetry?.location || {};
     const hasLocation = location.latitude != null && location.longitude != null;
     const dronePosition = hasLocation
         ? [location.latitude, location.longitude]
-        : null;
+        : droneHome;
     const heading = location.heading ?? 0;
     const flightMode = telemetry?.vehicle_state?.mode || 'UNKNOWN';
 
@@ -107,12 +114,7 @@ export default function MapViewPanel({ telemetry, selectedDrone, trajectory, hom
     const currentWaypoint = telemetry?.mission_progress?.current_waypoint ?? null;
 
     // Home/dock position: telemetry first-known > drone API data > null
-    const dockPosition = homePosition
-        || (selectedDrone?.home_latitude && selectedDrone?.home_longitude
-            ? [selectedDrone.home_latitude, selectedDrone.home_longitude]
-            : (selectedDrone?.dockings?.[0]?.latitude && selectedDrone?.dockings?.[0]?.longitude
-                ? [selectedDrone.dockings[0].latitude, selectedDrone.dockings[0].longitude]
-                : null));
+    const dockPosition = homePosition || droneHome;
 
     // Map center — use drone position, then dock, then default
     const center = dronePosition || dockPosition || defaultCenter;

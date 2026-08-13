@@ -229,7 +229,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
     // Derive positions from telemetry/props, fall back to defaults
     const dronePosition = telemetry?.location?.latitude != null
         ? [telemetry.location.latitude, telemetry.location.longitude]
-        : [-6.200000, 106.816666];
+        : (selectedDrone?.home_latitude != null ? [selectedDrone.home_latitude, selectedDrone.home_longitude] : [-6.200000, 106.816666]);
     const dockPosition = homePosition
         ? [homePosition[0], homePosition[1]]
         : dronePosition;

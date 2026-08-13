@@ -125,7 +125,8 @@ export default function MissionPage() {
         const maxRange = selectedDroneObj?.max_range_meter || 1800;
         const dronePosition = selectedTelemetry?.location ? [selectedTelemetry.location.latitude, selectedTelemetry.location.longitude] : null;
         const dockPosition = selectedHome || null;
-        const circleCenter = dockPosition || dronePosition;
+        const droneHome = selectedDroneObj?.home_latitude != null ? [selectedDroneObj.home_latitude, selectedDroneObj.home_longitude] : null;
+        const circleCenter = dockPosition || dronePosition || droneHome;
 
         const newWaypoints = [];
         const newWaypointsData = {};

@@ -326,8 +326,8 @@ export default function DashboardPage() {
                                 return;
                             }
                             // Use home/dock position for the waypoint (takeoff coordinates)
-                            const homeLat = selectedHome ? selectedHome[0] : (selectedTelemetry?.location?.latitude || roiPosition.lat);
-                            const homeLng = selectedHome ? selectedHome[1] : (selectedTelemetry?.location?.longitude || roiPosition.lng);
+                            const homeLat = selectedHome ? selectedHome[0] : (selectedTelemetry?.location?.latitude || selectedDrone?.home_latitude || roiPosition.lat);
+                            const homeLng = selectedHome ? selectedHome[1] : (selectedTelemetry?.location?.longitude || selectedDrone?.home_longitude || roiPosition.lng);
                             missionData.waypoints = [{
                                 sequence_order: 1,
                                 latitude: homeLat,
