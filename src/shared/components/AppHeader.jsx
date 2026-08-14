@@ -244,7 +244,7 @@ export default function AppHeader() {
                                     User Management
                                 </NavLink>
                                 <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
-                                <NavLink
+                                {/* <NavLink
                                     to="/docking-panel"
                                     onClick={() => setIsSettingsOpen(false)}
                                     className={({ isActive }) => `
@@ -254,7 +254,7 @@ export default function AppHeader() {
                                 >
                                     Controller Docking
                                 </NavLink>
-                                <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div>
+                                <div className="h-[1px] bg-[#2a3240] mx-4 my-1"></div> */}
                                 <button
                                     onClick={handleLogout}
                                     className="px-4 py-3 text-[13px] font-semibold tracking-wide transition-colors text-left text-red-400 hover:bg-[#252b36] hover:text-red-300"

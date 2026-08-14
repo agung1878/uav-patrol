@@ -3,6 +3,11 @@ import { MapContainer, TileLayer, Marker, Polyline, Circle, useMapEvents, useMap
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+const MIN_TAKEOFF_ALTITUDE = parseFloat(import.meta.env.VITE_MIN_TAKEOFF_ALTITUDE) || 15;
+const MAX_TAKEOFF_ALTITUDE = parseFloat(import.meta.env.VITE_MAX_TAKEOFF_ALTITUDE) || 500;
+const MIN_FLIGHT_ALTITUDE = parseFloat(import.meta.env.VITE_MIN_FLIGHT_ALTITUDE) || 15;
+const MAX_FLIGHT_ALTITUDE = parseFloat(import.meta.env.VITE_MAX_FLIGHT_ALTITUDE) || 500;
+
 // Fix Leaflet's default icon path issues
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -146,6 +151,9 @@ function ZoomControls() {
 }
 
 export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, onLaunch, telemetry, homePosition, selectedDrone }) {
+    // Error state
+    const [error, setError] = useState('');
+
     // ROI state
     const [roiPosition, setRoiPosition] = useState(null);
 
@@ -492,8 +500,8 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                         ref={takeoffAltitudeRef}
                                         type="number"
                                         className="w-[180px] h-[32px] bg-[#1a202c]/90 border border-[#2d3748] rounded px-3 text-white text-[12px] outline-none text-left focus:border-gray-400 transition-colors placeholder-gray-500"
-                                        placeholder="15"
-                                        defaultValue="15"
+                                        placeholder={String(MIN_TAKEOFF_ALTITUDE)}
+                                        defaultValue={String(MIN_TAKEOFF_ALTITUDE)}
                                     />
                                 </div>
 
@@ -555,8 +563,8 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                                 ref={flightAltitudeRef}
                                                 type="number"
                                                 className="w-[140px] h-[32px] bg-[#1a202c]/90 border border-[#2d3748] rounded px-3 text-white text-[12px] outline-none text-left focus:border-gray-400 transition-colors placeholder-gray-500"
-                                                placeholder="15"
-                                                defaultValue="15"
+                                                placeholder={String(MIN_FLIGHT_ALTITUDE)}
+                                                defaultValue={String(MIN_FLIGHT_ALTITUDE)}
                                             />
                                         </div>
                                         <div className="flex flex-col">
@@ -582,6 +590,12 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                         </div>
                     </div>
 
+                    {error && (
+                        <div className="text-red-400 text-[12px] text-center mt-2 mb-[-8px]">
+                            {error}
+                        </div>
+                    )}
+
                     {/* Action Buttons Row */}
                     <div className="flex gap-6 mt-1">
                         {/* Red Cancel Button */}
@@ -595,9 +609,21 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                         {/* Orange Launch Button */}
                         <button
                             onClick={() => {
-                                const takeoffAlt = parseFloat(takeoffAltitudeRef.current?.value) || 15;
+                                const takeoffAlt = parseFloat(takeoffAltitudeRef.current?.value) || MIN_TAKEOFF_ALTITUDE;
                                 const flightAlt = parseFloat(flightAltitudeRef.current?.value) || takeoffAlt;
                                 const holdDuration = parseFloat(holdDurationRef.current?.value) || 30;
+
+                                if (takeoffAlt < MIN_TAKEOFF_ALTITUDE || takeoffAlt > MAX_TAKEOFF_ALTITUDE) {
+                                    setError(`Takeoff altitude must be between ${MIN_TAKEOFF_ALTITUDE}m and ${MAX_TAKEOFF_ALTITUDE}m`);
+                                    return;
+                                }
+
+                                if (missionType === 'Spiral' && (flightAlt < MIN_FLIGHT_ALTITUDE || flightAlt > MAX_FLIGHT_ALTITUDE)) {
+                                    setError(`Flight altitude must be between ${MIN_FLIGHT_ALTITUDE}m and ${MAX_FLIGHT_ALTITUDE}m`);
+                                    return;
+                                }
+
+                                setError('');
                                 onLaunch({
                                     type: missionType,
                                     takeoffAltitude: takeoffAlt,

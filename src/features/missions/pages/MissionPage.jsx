@@ -9,6 +9,11 @@ import CustomDialog from '../../../shared/components/CustomDialog';
 import { uavService, missionService } from '../../../services/api';
 import useTelemetry from '../../../shared/hooks/useTelemetry';
 
+const MIN_TAKEOFF_ALTITUDE = parseFloat(import.meta.env.VITE_MIN_TAKEOFF_ALTITUDE) || 50;
+const MAX_TAKEOFF_ALTITUDE = parseFloat(import.meta.env.VITE_MAX_TAKEOFF_ALTITUDE) || 500;
+const MIN_FLIGHT_ALTITUDE = parseFloat(import.meta.env.VITE_MIN_FLIGHT_ALTITUDE) || 50;
+const MAX_FLIGHT_ALTITUDE = parseFloat(import.meta.env.VITE_MAX_FLIGHT_ALTITUDE) || 500;
+
 export default function MissionPage() {
     const [isAddingMission, setIsAddingMission] = useState(false);
     // Selected mission detail (when user clicks a mission in the list)
@@ -85,7 +90,7 @@ export default function MissionPage() {
     const handleWaypointDataChange = (id, field, value) => {
         setWaypointsData(prev => ({
             ...prev,
-            [id]: { ...(prev[id] || { altitude: 50, action: 'Take Picture', action_duration: 5 }), [field]: value }
+            [id]: { ...(prev[id] || { altitude: MIN_FLIGHT_ALTITUDE, action: 'Take Picture', action_duration: 5 }), [field]: value }
         }));
     };
 
@@ -147,7 +152,7 @@ export default function MissionPage() {
 
                 newWaypoints.push({ id: currentId, lat: wp.latitude, lng: wp.longitude });
                 newWaypointsData[currentId] = {
-                    altitude: wp.altitude ?? 50,
+                    altitude: wp.altitude ?? MIN_FLIGHT_ALTITUDE,
                     camera_tilt: wp.camera_tilt ?? -45,
                     camera_yaw: wp.camera_yaw ?? 0,
                     action: wp.action || 'Take Picture',
@@ -171,7 +176,7 @@ export default function MissionPage() {
             return {
                 latitude: wp.lat,
                 longitude: wp.lng,
-                altitude: parseFloat(data.altitude) || 50.0,
+                altitude: parseFloat(data.altitude) || MIN_FLIGHT_ALTITUDE,
                 camera_tilt: data.camera_tilt !== undefined ? parseFloat(data.camera_tilt) : -45.0,
                 camera_yaw: data.camera_yaw !== undefined ? parseFloat(data.camera_yaw) : 0.0,
                 action: data.action || 'Take Picture',
@@ -222,7 +227,7 @@ export default function MissionPage() {
                 sequence_order: index + 1,
                 latitude: wp.lat,
                 longitude: wp.lng,
-                altitude: parseFloat(data.altitude) || 50.0,
+                altitude: parseFloat(data.altitude) || MIN_FLIGHT_ALTITUDE,
                 camera_tilt: data.camera_tilt !== undefined ? parseFloat(data.camera_tilt) : -45.0,
                 camera_yaw: data.camera_yaw !== undefined ? parseFloat(data.camera_yaw) : 0.0,
                 action: data.action || 'Take Picture',
@@ -232,7 +237,7 @@ export default function MissionPage() {
 
         const missionData = {
             mission_name: missionName || 'Untitled Mission',
-            takeoff_altitude: parseFloat(takeoffAltitude) || 50,
+            takeoff_altitude: parseFloat(takeoffAltitude) || MIN_TAKEOFF_ALTITUDE,
             status: 'Waiting',
             schedule_timezone: 'Asia/Jakarta',
             waypoints: waypointPayloads
@@ -303,18 +308,18 @@ export default function MissionPage() {
         if (waypoints.length === 0) { setSubmitError('Please add at least one waypoint'); return; }
         
         const parsedTakeoff = parseFloat(formData.takeoffAltitude);
-        if (isNaN(parsedTakeoff) || parsedTakeoff < 50) {
-            setSubmitError('Takeoff altitude must be at least 50m');
+        if (isNaN(parsedTakeoff) || parsedTakeoff < MIN_TAKEOFF_ALTITUDE || parsedTakeoff > MAX_TAKEOFF_ALTITUDE) {
+            setSubmitError(`Takeoff altitude must be between ${MIN_TAKEOFF_ALTITUDE}m and ${MAX_TAKEOFF_ALTITUDE}m`);
             return;
         }
 
         const invalidWp = waypoints.find(wp => {
             const data = waypointsData[wp.id] || {};
-            const wpAlt = parseFloat(data.altitude) || 50.0;
-            return wpAlt < 50;
+            const wpAlt = parseFloat(data.altitude) || MIN_FLIGHT_ALTITUDE;
+            return wpAlt < MIN_FLIGHT_ALTITUDE || wpAlt > MAX_FLIGHT_ALTITUDE;
         });
         if (invalidWp) {
-            setSubmitError(`Waypoint ${invalidWp.id} altitude must be at least 50m`);
+            setSubmitError(`Waypoint ${invalidWp.id} altitude must be between ${MIN_FLIGHT_ALTITUDE}m and ${MAX_FLIGHT_ALTITUDE}m`);
             return;
         }
 
