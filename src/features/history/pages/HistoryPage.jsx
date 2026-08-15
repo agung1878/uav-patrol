@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { missionService, recordingService, STREAM_API_URL } from '../../../services/api';
+import { missionService, recordingService, API_BASE_URL, RECORDING_API_URL } from '../../../services/api';
 
 // Fix Leaflet's default icon path issues
 delete L.Icon.Default.prototype._getIconUrl;
@@ -343,7 +343,7 @@ export default function HistoryPage() {
                                                     <DownloadIcon />
                                                     <div className="flex flex-col leading-tight">
                                                         <a
-                                                            href={`${STREAM_API_URL}/api/missions/${row.mission_id || row.id}/download`}
+                                                            href={`${RECORDING_API_URL}/api/missions/${row.mission_id || row.id}/download`}
                                                             download
                                                             onClick={(e) => e.stopPropagation()}
                                                             className="text-[#3b82f6] underline decoration-[#3b82f6]/40 underline-offset-2 hover:text-orange-500 hover:decoration-orange-500/40"
@@ -364,7 +364,7 @@ export default function HistoryPage() {
                                                     <DownloadIcon />
                                                     <div className="flex flex-col leading-tight">
                                                         <a
-                                                            href={`${STREAM_API_URL}/api/missions/${row.mission_id || row.id}/download`}
+                                                            href={`${RECORDING_API_URL}/api/missions/${row.mission_id || row.id}/download`}
                                                             download
                                                             onClick={(e) => e.stopPropagation()}
                                                             className="text-[#3b82f6] underline decoration-[#3b82f6]/40 underline-offset-2 hover:text-orange-500 hover:decoration-orange-500/40"

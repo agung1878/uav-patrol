@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://api-xflight.kumalabs.tech';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://api-xflight.kumalabs.tech';
+export const RECORDING_API_URL = import.meta.env.VITE_RECORDING_API_URL || 'http://172.20.0.10:8000';
 export const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://api-xflight.kumalabs.tech';
 export const STREAM_API_URL = import.meta.env.VITE_STREAM_API_URL || 'http://172.15.1.15:8000';
 export const WHEP_URL = import.meta.env.VITE_WHEP_URL || 'http://172.15.1.15:8889/stream/cam2/whep';
@@ -297,7 +298,7 @@ export const notificationService = {
 
 export const recordingService = {
     getMissionRecording: async (idOrUuid) => {
-        const response = await fetch(`${STREAM_API_URL}/api/missions/${idOrUuid}`);
+        const response = await fetch(`${RECORDING_API_URL}/api/missions/${idOrUuid}`);
 
         if (!response.ok) {
             if (response.status === 404) return null;
