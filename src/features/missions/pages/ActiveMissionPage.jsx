@@ -116,7 +116,7 @@ const WeatherWidget = ({ weather }) => {
     );
 };
 
-const DPadControl = ({ onZoomIn, onZoomOut, onZoomStop, onArrow, onArrowStop, onJoystickDrag, onJoystickStop, zoomLevel }) => {
+const DPadControl = ({ onZoomIn, onZoomOut, onZoomStop, onArrow, onArrowStop, onJoystickDrag, onJoystickStop, onSetGimbal, zoomLevel }) => {
     const intervalRef = useRef(null);
     const [stickPos, setStickPos] = useState({ x: 0, y: 0 });
     const isDragging = useRef(false);
@@ -177,7 +177,7 @@ const DPadControl = ({ onZoomIn, onZoomOut, onZoomStop, onArrow, onArrowStop, on
     useEffect(() => () => clearInterval(intervalRef.current), []);
 
     return (
-        <div className="w-[340px] h-full flex items-center justify-center gap-10 bg-[#151a25]/95 backdrop-blur rounded-[24px] border border-[#2a3240] shadow-lg shrink-0">
+        <div className="w-[340px] h-full flex items-center justify-center gap-6 bg-[#151a25]/95 backdrop-blur rounded-[24px] border border-[#2a3240] shadow-lg shrink-0">
             <div className="flex flex-col gap-4 items-center">
                 <button
                     onMouseDown={onZoomIn}
@@ -233,6 +233,32 @@ const DPadControl = ({ onZoomIn, onZoomOut, onZoomStop, onArrow, onArrowStop, on
                     onMouseLeave={stopArrow}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-orange-500 text-[14px] cursor-pointer hover:text-orange-300 active:scale-125 transition-all select-none p-1"
                 >▶</div>
+            </div>
+            
+            {/* Quick Gimbal Buttons */}
+            <div className="flex flex-col gap-4 items-center">
+                <button
+                    onClick={() => onSetGimbal?.(0, 0)}
+                    className="w-[56px] h-[56px] rounded-[16px] bg-[#111827] hover:bg-[#1f2937] flex flex-col items-center justify-center text-white text-[11px] font-medium shadow-md border border-[#374151] active:translate-y-0.5 active:border-orange-500/50 transition-all select-none"
+                    title="Center Gimbal"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-1 text-gray-300">
+                        <circle cx="12" cy="12" r="10" />
+                        <circle cx="12" cy="12" r="3" />
+                    </svg>
+                    0°
+                </button>
+                <button
+                    onClick={() => onSetGimbal?.(-90, 0)}
+                    className="w-[56px] h-[56px] rounded-[16px] bg-[#111827] hover:bg-[#1f2937] flex flex-col items-center justify-center text-white text-[11px] font-medium shadow-md border border-[#374151] active:translate-y-0.5 active:border-orange-500/50 transition-all select-none"
+                    title="Point Down"
+                >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-1 text-gray-300">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <polyline points="19 12 12 19 5 12" />
+                    </svg>
+                    -90°
+                </button>
             </div>
         </div>
     );
@@ -326,6 +352,20 @@ export default function ActiveMissionPage() {
         // Normalize yaw to -180..180
         if (yaw > 180) yaw -= 360;
         if (yaw < -180) yaw += 360;
+
+        gimbalPitchRef.current = pitch;
+        gimbalYawRef.current = yaw;
+
+        publish(selectedUavId, 'gimbal_command', {
+            command: 'set_pitch_yaw',
+            pitch_deg: pitch,
+            yaw_deg: yaw,
+            mode: 'follow'
+        });
+    }, [selectedUavId, publish]);
+
+    const handleGimbalSet = useCallback((pitch, yaw) => {
+        if (!selectedUavId) return;
 
         gimbalPitchRef.current = pitch;
         gimbalYawRef.current = yaw;
@@ -669,6 +709,7 @@ export default function ActiveMissionPage() {
                     onArrow={handleGimbalArrow}
                     onJoystickDrag={handleJoystickDrag}
                     onJoystickStop={handleJoystickStop}
+                    onSetGimbal={handleGimbalSet}
                     zoomLevel={cameraState.zoom_level}
                 />
             </div>
