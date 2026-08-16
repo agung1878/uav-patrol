@@ -109,11 +109,53 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
 
             {/* === Error Overlay === */}
             {streamError && !isStreaming && !isConnecting && (
-                <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-10">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-3 opacity-80">
-                        <circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" />
-                    </svg>
-                    <span className="text-red-400 text-[12px] font-medium max-w-[60%] text-center">{streamError}</span>
+                <div className="absolute inset-0 bg-[#0f131a]/90 backdrop-blur-md flex flex-col items-center justify-center z-10 p-6">
+                    <div className="flex flex-col items-center justify-center bg-[#1c222c] border border-red-500/20 rounded-2xl p-8 shadow-[0_0_50px_rgba(239,68,68,0.05)] w-full max-w-md relative overflow-hidden">
+                        {/* Decorative background elements */}
+                        <div className="absolute -top-20 -right-20 w-40 h-40 bg-red-500/5 rounded-full blur-3xl"></div>
+                        <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-orange-500/5 rounded-full blur-3xl"></div>
+
+                        {/* Icon */}
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/20 flex items-center justify-center mb-5 relative z-10 shadow-inner">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </div>
+
+                        {/* Title */}
+                        <h3 className="text-gray-100 text-[18px] font-bold tracking-wider mb-2 uppercase relative z-10 text-center">
+                            Stream Unavailable
+                        </h3>
+
+                        {/* Subtitle */}
+                        <p className="text-gray-400 text-[13px] text-center mb-6 leading-relaxed relative z-10">
+                            The video feed connection could not be established. Please check the drone's status or verify the stream configuration.
+                        </p>
+
+                        {/* Error details container */}
+                        <div className="w-full bg-black/40 border border-red-500/10 rounded-xl p-4 relative z-10">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                                <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest">Error Details</span>
+                            </div>
+                            <div className="font-mono text-red-400/90 text-[11px] break-words leading-relaxed">
+                                {(() => {
+                                    try {
+                                        const match = streamError.match(/\{.*\}/);
+                                        if (match) {
+                                            const parsed = JSON.parse(match[0]);
+                                            return parsed.error || parsed.detail || streamError;
+                                        }
+                                    } catch (e) {
+                                        // fallback
+                                    }
+                                    return streamError;
+                                })()}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
