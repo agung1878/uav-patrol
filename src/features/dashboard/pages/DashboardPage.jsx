@@ -294,7 +294,7 @@ export default function DashboardPage() {
                     selectedDrone={selectedDrone}
                     onClose={() => setIsLaunchFormOpen(false)}
                     onLaunch={async (launchData) => {
-                        const { type, takeoffAltitude, flightAltitude, holdDuration, roiPosition, spiralWaypoints } = launchData;
+                        const { type, takeoffAltitude, flightAltitude, holdDuration, cameraTilt, roiPosition, spiralWaypoints } = launchData;
                         console.log('[QuickLaunch] Launching:', JSON.stringify(launchData, null, 2));
 
                         // Build "now" schedule
@@ -325,6 +325,9 @@ export default function DashboardPage() {
                                 showToast('warning', 'Please set an ROI point on the map first.');
                                 return;
                             }
+                            if (holdDuration > 0) {
+                                missionData.takeoff_hold_duration = holdDuration;
+                            }
                             // Use home/dock position for the waypoint (takeoff coordinates)
                             const homeLat = selectedHome ? selectedHome[0] : (selectedTelemetry?.location?.latitude || selectedDrone?.home_latitude || roiPosition.lat);
                             const homeLng = selectedHome ? selectedHome[1] : (selectedTelemetry?.location?.longitude || selectedDrone?.home_longitude || roiPosition.lng);
@@ -333,6 +336,7 @@ export default function DashboardPage() {
                                 latitude: homeLat,
                                 longitude: homeLng,
                                 altitude: takeoffAltitude || 15,
+                                camera_tilt: cameraTilt,
                                 action: 'Take Picture',
                                 action_duration: 5,
                             }];
@@ -351,6 +355,7 @@ export default function DashboardPage() {
                                 latitude: wp.lat,
                                 longitude: wp.lng,
                                 altitude: flightAltitude || takeoffAltitude || 15,
+                                camera_tilt: cameraTilt,
                                 action: 'Take Picture',
                                 action_duration: 5,
                             }));

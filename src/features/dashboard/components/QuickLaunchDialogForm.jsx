@@ -169,6 +169,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
     const takeoffAltitudeRef = useRef(null);
     const flightAltitudeRef = useRef(null);
     const holdDurationRef = useRef(null);
+    const cameraTiltRef = useRef(null);
 
     // Ref for the spiral center so the click handler can access latest value
     const spiralCenterRef = useRef(null);
@@ -505,14 +506,28 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                     />
                                 </div>
 
-                                {/* Launch Mode: Hold Duration input */}
-                                {isLaunch && (
+                                {/* Camera Tilt input -> Present in all modes */}
+                                <div className="flex flex-col">
+                                    <label className="text-gray-400 text-[10px] text-center mb-2 px-2 shadow-black drop-shadow-md">Camera Tilt (°)</label>
+                                    <input
+                                        ref={cameraTiltRef}
+                                        type="number"
+                                        className="w-[120px] h-[32px] bg-[#1a202c]/90 border border-[#2d3748] rounded px-3 text-white text-[12px] outline-none text-center focus:border-gray-400 transition-colors placeholder-gray-500"
+                                        placeholder="-90"
+                                        defaultValue="-90"
+                                        min="-90"
+                                        max="90"
+                                    />
+                                </div>
+
+                                {/* Launch & ROI Mode: Hold Duration input */}
+                                {(isLaunch || isROI) && (
                                     <div className="flex flex-col">
                                         <label className="text-gray-400 text-[10px] text-center mb-2 px-2 shadow-black drop-shadow-md">Hold Duration (s)</label>
                                         <input
                                             ref={holdDurationRef}
                                             type="number"
-                                            className="w-[160px] h-[32px] bg-[#1a202c]/90 border border-[#2d3748] rounded px-3 text-white text-[12px] outline-none text-left focus:border-gray-400 transition-colors placeholder-gray-500"
+                                            className="w-[120px] h-[32px] bg-[#1a202c]/90 border border-[#2d3748] rounded px-3 text-white text-[12px] outline-none text-center focus:border-gray-400 transition-colors placeholder-gray-500"
                                             placeholder="30"
                                             defaultValue="30"
                                             min="0"
@@ -612,6 +627,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                 const takeoffAlt = parseFloat(takeoffAltitudeRef.current?.value) || MIN_TAKEOFF_ALTITUDE;
                                 const flightAlt = parseFloat(flightAltitudeRef.current?.value) || takeoffAlt;
                                 const holdDuration = parseFloat(holdDurationRef.current?.value) || 30;
+                                const cameraTilt = parseFloat(cameraTiltRef.current?.value) ?? -90;
 
                                 if (takeoffAlt < MIN_TAKEOFF_ALTITUDE || takeoffAlt > MAX_TAKEOFF_ALTITUDE) {
                                     setError(`Takeoff altitude must be between ${MIN_TAKEOFF_ALTITUDE}m and ${MAX_TAKEOFF_ALTITUDE}m`);
@@ -628,7 +644,8 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                                     type: missionType,
                                     takeoffAltitude: takeoffAlt,
                                     flightAltitude: flightAlt,
-                                    holdDuration: isLaunch ? holdDuration : 0,
+                                    holdDuration: (isLaunch || isROI) ? holdDuration : 0,
+                                    cameraTilt: cameraTilt,
                                     roiPosition: isROI ? roiPosition : null,
                                     spiralWaypoints: isSpiral ? spiralWaypoints : [],
                                 });
