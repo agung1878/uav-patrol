@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import useDockStream from '../../../shared/hooks/useDockStream';
 
 const CompassWidget = ({ heading = 0, isSmallPanel = false }) => (
     <div className={`absolute bottom-6 right-6 rounded-full bg-black/40 flex items-center justify-center ${isSmallPanel ? 'w-20 h-20' : 'w-32 h-32'}`}>
@@ -47,6 +48,14 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
     const videoRef = useRef(null);
     const containerRef = useRef(null);
     const [elapsed, setElapsed] = useState(0);
+    const [activeCam, setActiveCam] = useState('drone');
+    
+    // Initialize dock stream hook
+    const dockStream = useDockStream();
+
+    const currentIsStreaming = activeCam === 'drone' ? isStreaming : dockStream.isStreaming;
+    const currentIsConnecting = activeCam === 'drone' ? isConnecting : dockStream.isConnecting;
+    const currentStreamError = activeCam === 'drone' ? streamError : dockStream.streamError;
 
     const toggleFullscreen = async () => {
         if (!document.fullscreenElement) {
@@ -62,26 +71,26 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
 
     // Attach the MediaStream to the <video> element when it arrives
     useEffect(() => {
-        if (videoRef.current && videoStream) {
-            videoRef.current.srcObject = videoStream;
+        if (videoRef.current) {
+            videoRef.current.srcObject = activeCam === 'drone' ? videoStream : dockStream.videoStream;
         }
-    }, [videoStream]);
+    }, [videoStream, dockStream.videoStream, activeCam]);
 
     // Elapsed timer while streaming
     useEffect(() => {
-        if (!isStreaming) {
+        if (!currentIsStreaming) {
             setElapsed(0);
             return;
         }
         const interval = setInterval(() => setElapsed(prev => prev + 1), 1000);
         return () => clearInterval(interval);
-    }, [isStreaming]);
+    }, [currentIsStreaming]);
 
     return (
         <div ref={containerRef} className="relative w-full h-full bg-[#1c222c] rounded-2xl border border-[#2a3240] overflow-hidden shadow-lg select-none">
 
             {/* === Live WebRTC Video === */}
-            {(isStreaming || isConnecting) && (
+            {(currentIsStreaming || currentIsConnecting) && (
                 <video
                     ref={videoRef}
                     autoPlay
@@ -92,7 +101,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             )}
 
             {/* === Placeholder (shown when NOT streaming) === */}
-            {!isStreaming && !isConnecting && (
+            {!currentIsStreaming && !currentIsConnecting && (
                 <div
                     className="absolute inset-0 bg-cover bg-center bg-no-repeat"
                     style={{ backgroundImage: `url('/images/img_stream_na.png')` }}
@@ -100,7 +109,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             )}
 
             {/* === Connecting Overlay === */}
-            {isConnecting && !isStreaming && (
+            {currentIsConnecting && !currentIsStreaming && (
                 <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
                     <div className="w-10 h-10 border-3 border-orange-500/30 border-t-orange-500 rounded-full animate-spin mb-4"></div>
                     <span className="text-gray-300 text-[13px] font-medium tracking-wide">Connecting to stream...</span>
@@ -108,7 +117,7 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             )}
 
             {/* === Error Overlay === */}
-            {streamError && !isStreaming && !isConnecting && (
+            {currentStreamError && !currentIsStreaming && !currentIsConnecting && (
                 <div className="absolute inset-0 bg-[#0f131a]/90 backdrop-blur-md flex flex-col items-center justify-center z-10 p-6">
                     <div className="flex flex-col items-center justify-center bg-[#1c222c] border border-red-500/20 rounded-2xl p-8 shadow-[0_0_50px_rgba(239,68,68,0.05)] w-full max-w-md relative overflow-hidden">
                         {/* Decorative background elements */}
@@ -143,15 +152,15 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
                             <div className="font-mono text-red-400/90 text-[11px] break-words leading-relaxed">
                                 {(() => {
                                     try {
-                                        const match = streamError.match(/\{.*\}/);
+                                        const match = currentStreamError.match(/\{.*\}/);
                                         if (match) {
                                             const parsed = JSON.parse(match[0]);
-                                            return parsed.error || parsed.detail || streamError;
+                                            return parsed.error || parsed.detail || currentStreamError;
                                         }
                                     } catch (e) {
                                         // fallback
                                     }
-                                    return streamError;
+                                    return currentStreamError;
                                 })()}
                             </div>
                         </div>
@@ -160,14 +169,35 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             )}
 
             {/* === Top Left Badge === */}
-            <div className={`absolute top-4 left-4 z-20 bg-black/60 border border-gray-500 px-3 py-1.5 rounded uppercase flex items-center justify-center gap-2 ${isSmallPanel ? 'scale-[0.8] origin-top-left' : ''}`}>
-                <span className="text-[#ea580c] text-[11px] font-bold tracking-widest">DRONE CAM</span>
-                {isStreaming && (
-                    <div className="flex items-center gap-1.5 ml-1">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                        <span className="text-emerald-400 text-[9px] font-bold tracking-wider">LIVE</span>
-                    </div>
-                )}
+            <div className={`absolute top-4 left-4 z-20 flex gap-2 ${isSmallPanel ? 'scale-[0.8] origin-top-left' : ''}`}>
+                <button
+                    onClick={() => setActiveCam('drone')}
+                    className={`bg-black/60 border px-3 py-1.5 rounded uppercase flex items-center justify-center gap-2 transition-colors ${
+                        activeCam === 'drone' ? 'border-[#ea580c]' : 'border-gray-500 hover:border-gray-400'
+                    }`}
+                >
+                    <span className={`${activeCam === 'drone' ? 'text-[#ea580c]' : 'text-gray-400'} text-[11px] font-bold tracking-widest`}>DRONE CAM</span>
+                    {activeCam === 'drone' && currentIsStreaming && (
+                        <div className="flex items-center gap-1.5 ml-1">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span className="text-emerald-400 text-[9px] font-bold tracking-wider">LIVE</span>
+                        </div>
+                    )}
+                </button>
+                <button
+                    onClick={() => setActiveCam('dock')}
+                    className={`bg-black/60 border px-3 py-1.5 rounded uppercase flex items-center justify-center gap-2 transition-colors ${
+                        activeCam === 'dock' ? 'border-[#ea580c]' : 'border-gray-500 hover:border-gray-400'
+                    }`}
+                >
+                    <span className={`${activeCam === 'dock' ? 'text-[#ea580c]' : 'text-gray-400'} text-[11px] font-bold tracking-widest`}>DOCK CAM</span>
+                    {activeCam === 'dock' && currentIsStreaming && (
+                        <div className="flex items-center gap-1.5 ml-1">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span className="text-emerald-400 text-[9px] font-bold tracking-wider">LIVE</span>
+                        </div>
+                    )}
+                </button>
             </div>
 
             {/* === Top Center Badge === */}
@@ -184,9 +214,9 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             <div className={`absolute top-4 right-4 z-20 flex gap-2 ${isSmallPanel ? 'scale-[0.8] origin-top-right' : ''}`}>
                 <div className="bg-black/50 border border-gray-500 px-3 py-1 rounded flex items-center justify-center space-x-4 hidden">
                     <div className="flex items-center space-x-2">
-                        <div className={`w-2.5 h-2.5 rounded-full ${isStreaming ? 'bg-red-600 animate-pulse' : 'bg-gray-600'} mt-[1px]`}></div>
+                        <div className={`w-2.5 h-2.5 rounded-full ${currentIsStreaming ? 'bg-red-600 animate-pulse' : 'bg-gray-600'} mt-[1px]`}></div>
                         <span className="text-gray-100 text-[11px] font-bold uppercase tracking-wider">
-                            {isStreaming ? 'Recording' : 'Standby'}
+                            {currentIsStreaming ? 'Recording' : 'Standby'}
                         </span>
                     </div>
                     <span className="text-gray-100 text-[11px] font-mono font-bold tracking-widest pt-[2px]">
@@ -207,8 +237,8 @@ export default function MainVideoFeedPanel({ videoStream, isStreaming, isConnect
             {/* === Bottom Left Status === */}
             <div className={`absolute bottom-5 left-5 z-20 flex flex-col items-start bg-black/30 px-2 py-1 rounded ${isSmallPanel ? 'scale-[0.8] origin-bottom-left' : ''}`}>
                 <span className="text-gray-300 text-[10px] uppercase font-bold tracking-wider drop-shadow-md">Camera Status</span>
-                <span className={`text-[13px] font-semibold tracking-wide drop-shadow-md mt-0.5 ${isStreaming ? 'text-emerald-400' : isConnecting ? 'text-amber-400' : 'text-red-400'}`}>
-                    {isStreaming ? 'Live Stream' : isConnecting ? 'Connecting...' : 'OFFLINE'}
+                <span className={`text-[13px] font-semibold tracking-wide drop-shadow-md mt-0.5 ${currentIsStreaming ? 'text-emerald-400' : currentIsConnecting ? 'text-amber-400' : 'text-red-400'}`}>
+                    {currentIsStreaming ? 'Live Stream' : currentIsConnecting ? 'Connecting...' : 'OFFLINE'}
                 </span>
             </div>
 
