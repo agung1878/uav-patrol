@@ -143,6 +143,7 @@ export default function MapViewPanel({ telemetry, selectedDrone, trajectory, hom
                 zoom={hasLocation ? 16 : 13}
                 style={{ height: '100%', width: '100%' }}
                 zoomControl={false}
+                attributionControl={false}
                 scrollWheelZoom={true}
                 maxZoom={22}
             >

@@ -323,6 +323,7 @@ export default function QuickLaunchDialogForm({ isOpen, missionType, onClose, on
                             zoom={13}
                             style={{ height: '100%', width: '100%' }}
                             zoomControl={false}
+                            attributionControl={false}
                             scrollWheelZoom={true}
                             maxZoom={22}
                         >

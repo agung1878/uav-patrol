@@ -253,6 +253,7 @@ export default function MissionMapPanel({ waypoints, onAddWaypoint, isViewMode =
                 zoom={dronePosition ? 16 : 14}
                 style={{ height: '100%', width: '100%' }}
                 zoomControl={false}
+                attributionControl={false}
                 scrollWheelZoom={true}
                 maxZoom={22}
             >
